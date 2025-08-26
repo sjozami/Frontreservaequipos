@@ -1,0 +1,83 @@
+import type { ModuloHorario, EquipoEscolar } from "./types"
+
+export const MODULOS_HORARIOS: ModuloHorario[] = [
+  { numero: 1, horaInicio: "08:00", horaFin: "08:40", nombre: "1° Módulo" },
+  { numero: 2, horaInicio: "08:40", horaFin: "09:20", nombre: "2° Módulo" },
+  { numero: 3, horaInicio: "09:20", horaFin: "10:00", nombre: "3° Módulo" },
+  { numero: 4, horaInicio: "10:00", horaFin: "10:40", nombre: "4° Módulo" },
+  { numero: 5, horaInicio: "10:40", horaFin: "11:20", nombre: "5° Módulo" },
+  { numero: 6, horaInicio: "11:20", horaFin: "12:00", nombre: "6° Módulo" },
+  { numero: 7, horaInicio: "12:00", horaFin: "12:40", nombre: "7° Módulo" },
+  { numero: 8, horaInicio: "12:40", horaFin: "13:20", nombre: "8° Módulo" },
+  { numero: 9, horaInicio: "13:20", horaFin: "14:00", nombre: "9° Módulo" },
+  { numero: 10, horaInicio: "14:00", horaFin: "14:40", nombre: "10° Módulo" },
+  { numero: 11, horaInicio: "14:40", horaFin: "15:20", nombre: "11° Módulo" },
+  { numero: 12, horaInicio: "15:20", horaFin: "16:00", nombre: "12° Módulo" },
+  { numero: 13, horaInicio: "16:00", horaFin: "16:40", nombre: "13° Módulo" },
+  { numero: 14, horaInicio: "16:40", horaFin: "17:20", nombre: "14° Módulo" },
+  { numero: 15, horaInicio: "17:20", horaFin: "18:00", nombre: "15° Módulo" },
+]
+
+export const EQUIPOS_ESCOLARES: EquipoEscolar[] = [
+  {
+    id: "sala-informatica",
+    nombre: "Sala de Informática",
+    descripcion: "Aula con computadoras para clases de informática",
+    disponible: true,
+    ubicacion: "Planta Baja - Aula 15",
+    requiereCapacitacion: false,
+  },
+  {
+    id: "proyector",
+    nombre: "Proyector",
+    descripcion: "Proyector portátil para presentaciones",
+    disponible: true,
+    ubicacion: "Depósito de equipos",
+    requiereCapacitacion: true,
+  },
+  {
+    id: "tv-biblioteca",
+    nombre: "TV Biblioteca",
+    descripcion: "Televisor fijo en la biblioteca",
+    disponible: true,
+    ubicacion: "Biblioteca",
+    requiereCapacitacion: false,
+  },
+  {
+    id: "tv-movil",
+    nombre: "TV Móvil",
+    descripcion: "Televisor con soporte móvil",
+    disponible: true,
+    ubicacion: "Depósito de equipos",
+    requiereCapacitacion: false,
+  },
+  {
+    id: "adm-edutec",
+    nombre: "Adm Edutec",
+    descripcion: "Equipo de administración educativa tecnológica",
+    disponible: true,
+    ubicacion: "Sala de profesores",
+    requiereCapacitacion: true,
+  },
+]
+
+export const CURSOS_SECUNDARIA = [
+  "1° A",
+  "1° B",
+  "1° C",
+  "2° A",
+  "2° B",
+  "2° C",
+  "3° A",
+  "3° B",
+  "3° C",
+  "4° A",
+  "4° B",
+  "4° C",
+  "5° A",
+  "5° B",
+  "5° C",
+  "6° A",
+  "6° B",
+  "6° C",
+]
