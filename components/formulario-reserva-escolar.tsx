@@ -40,6 +40,15 @@ interface FormularioReservaEscolarProps {
   onCrearReservasRecurrentes?: (reservas: Omit<ReservaEscolar, "id" | "fechaCreacion">[]) => void
   onCancelar: () => void
   reservasExistentes?: ReservaEscolar[]
+  // Fecha máxima permitida para crear reservas (inclusive). Si se proporciona, no se podrán
+  // seleccionar fechas posteriores a esta fecha.
+  maxFechaReserva?: Date
+  // Permitir crear reservas recurrentes. Por defecto true.
+  allowRecurrente?: boolean
+  // Si se proporciona, el formulario fijará este docente como responsable y no permitirá cambiarlo
+  currentDocente?: Docente
+  // Forzar bloqueo del selector de docente cuando se provee currentDocente
+  lockDocente?: boolean
 }
 
 export function FormularioReservaEscolar({
@@ -47,6 +56,10 @@ export function FormularioReservaEscolar({
   onCrearReservasRecurrentes,
   onCancelar,
   reservasExistentes = [],
+  maxFechaReserva,
+  allowRecurrente = true,
+  currentDocente,
+  lockDocente = false,
 }: FormularioReservaEscolarProps) {
   const [equipos, setEquipos] = useState<EquipoEscolar[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
@@ -100,6 +113,10 @@ export function FormularioReservaEscolar({
       nuevosErrores.fecha = "Debe seleccionar una fecha"
     }
 
+    if (maxFechaReserva && fecha && isAfter(startOfDay(fecha), endOfDay(maxFechaReserva))) {
+      nuevosErrores.fecha = `No se pueden crear reservas después de ${format(maxFechaReserva, "dd/MM/yyyy", { locale: es })}`
+    }
+
     if (modulosSeleccionados.length === 0) {
       nuevosErrores.modulos = "Debe seleccionar al menos un módulo"
     }
@@ -109,6 +126,10 @@ export function FormularioReservaEscolar({
         nuevosErrores.fechaHasta = "Debe seleccionar una fecha de finalización"
       } else if (fecha && isAfter(fecha, fechaHasta)) {
         nuevosErrores.fechaHasta = "La fecha de finalización debe ser posterior a la fecha de inicio"
+      }
+
+      if (maxFechaReserva && fechaHasta && isAfter(startOfDay(fechaHasta), endOfDay(maxFechaReserva))) {
+        nuevosErrores.fechaHasta = `La fecha de repetición no puede ser posterior a ${format(maxFechaReserva, "dd/MM/yyyy", { locale: es })}`
       }
 
       if (equipoId && modulosSeleccionados.length > 0 && fechasGeneradas.length > 0) {
@@ -255,6 +276,14 @@ export function FormularioReservaEscolar({
     fetchData();
   }, []);
 
+  // When a currentDocente is provided (e.g. user logged in as docente), lock and preselect it
+  useEffect(() => {
+    if (currentDocente && currentDocente.id) {
+      setDocenteId(currentDocente.id)
+      // ensure the docentes list includes it — the fetch above should populate it
+    }
+  }, [currentDocente])
+
   const getEquipoSeleccionado = (): EquipoEscolar | undefined => {
     return equipos.find((e) => e.id === equipoId)
   }
@@ -364,19 +393,26 @@ export function FormularioReservaEscolar({
 
             <div>
               <Label htmlFor="docente">Docente responsable *</Label>
-              <Select value={docenteId} onValueChange={setDocenteId}>
-                <SelectTrigger className={errores.docente ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Seleccionar docente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {docentes.map((docente) => (
-                    <SelectItem key={docente.id} value={docente.id}>
-                      {docente.nombre} {docente.apellido} - {docente.curso}
-                      {docente.materia && ` (${docente.materia})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockDocente && currentDocente ? (
+                <div className="p-2 border rounded-md bg-muted">
+                  <div className="font-medium">{currentDocente.nombre} {currentDocente.apellido}</div>
+                  <div className="text-sm text-muted-foreground">{currentDocente.curso}{currentDocente.materia ? ` • ${currentDocente.materia}` : ''}</div>
+                </div>
+              ) : (
+                <Select value={docenteId} onValueChange={setDocenteId}>
+                  <SelectTrigger className={errores.docente ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Seleccionar docente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docentes.map((docente) => (
+                      <SelectItem key={docente.id} value={docente.id}>
+                        {docente.nombre} {docente.apellido} - {docente.curso}
+                        {docente.materia && ` (${docente.materia})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {errores.docente && <p className="text-sm text-destructive mt-1">{errores.docente}</p>}
             </div>
           </div>
@@ -397,16 +433,22 @@ export function FormularioReservaEscolar({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={fecha}
-                    onSelect={(date) => {
-                      setFecha(date)
-                    }}
-                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
-                    initialFocus
-                  />
-                </PopoverContent>
+                    <Calendar
+                      mode="single"
+                      selected={fecha}
+                      onSelect={(date) => {
+                        setFecha(date)
+                      }}
+                      disabled={(date) => {
+                        // disable past dates
+                        if (isBefore(date, startOfDay(new Date()))) return true
+                        // disable beyond maxFechaReserva if provided
+                        if (maxFechaReserva && isAfter(startOfDay(date), endOfDay(maxFechaReserva))) return true
+                        return false
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
               </Popover>
               {errores.fecha && <p className="text-sm text-destructive mt-1">{errores.fecha}</p>}
             </div>
@@ -427,104 +469,114 @@ export function FormularioReservaEscolar({
         </CardContent>
       </Card>
 
-      {/* Reserva Recurrente */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Repeat className="w-5 h-5" />
-            Reserva Recurrente
-          </CardTitle>
-          <CardDescription>
-            Configura reservas automáticas para cursos especiales que se dictan regularmente
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="recurrente"
-              checked={esRecurrente}
-              onCheckedChange={(checked) => {
-                setEsRecurrente(checked as boolean)
-              }}
-            />
-            <Label htmlFor="recurrente">Crear reserva recurrente</Label>
-          </div>
-
-          {esRecurrente && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-              <div>
-                <Label>Frecuencia</Label>
-                <Select
-                  value={frecuencia}
-                  onValueChange={(value) => {
-                    setFrecuencia(value as typeof frecuencia)
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="semanal">Semanal (cada 7 días)</SelectItem>
-                    <SelectItem value="mensual">Mensual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Repetir hasta *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`w-full justify-start text-left font-normal bg-transparent ${
-                        errores.fechaHasta ? "border-destructive" : ""
-                      }`}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {fechaHasta ? format(fechaHasta, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={fechaHasta}
-                      onSelect={(date) => {
-                        setFechaHasta(date)
-                      }}
-                      disabled={(date) => (fecha ? !isAfter(date, startOfDay(fecha)) : isBefore(date, startOfDay(new Date())))}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                  </Popover>
-                {errores.fechaHasta && <p className="text-sm text-destructive mt-1">{errores.fechaHasta}</p>}
-              </div>
-
-              {fechasGeneradas.length > 0 && (
-                <div className="md:col-span-2">
-                  <Label>Fechas generadas ({fechasGeneradas.length} reservas)</Label>
-                  <div className="mt-2 p-3 bg-muted rounded-lg max-h-32 overflow-y-auto">
-                    <div className="flex flex-wrap gap-1">
-                      {fechasGeneradas.slice(0, 10).map((fecha, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {format(fecha, "dd/MM", { locale: es })}
-                        </Badge>
-                      ))}
-                      {fechasGeneradas.length > 10 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{fechasGeneradas.length - 10} más
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {errores.disponibilidadRecurrente && (
-                    <p className="text-sm text-destructive mt-1">{errores.disponibilidadRecurrente}</p>
-                  )}
-                </div>
-              )}
+      {/* Reserva Recurrente (visible solo si allowRecurrente=true) */}
+      {allowRecurrente && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Repeat className="w-5 h-5" />
+              Reserva Recurrente
+            </CardTitle>
+            <CardDescription>
+              Configura reservas automáticas para cursos especiales que se dictan regularmente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="recurrente"
+                checked={esRecurrente}
+                onCheckedChange={(checked) => {
+                  setEsRecurrente(checked as boolean)
+                }}
+              />
+              <Label htmlFor="recurrente">Crear reserva recurrente</Label>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {esRecurrente && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                <div>
+                  <Label>Frecuencia</Label>
+                  <Select
+                    value={frecuencia}
+                    onValueChange={(value) => {
+                      setFrecuencia(value as typeof frecuencia)
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="semanal">Semanal (cada 7 días)</SelectItem>
+                      <SelectItem value="mensual">Mensual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Repetir hasta *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start text-left font-normal bg-transparent ${
+                          errores.fechaHasta ? "border-destructive" : ""
+                        }`}
+                      >
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        {fechaHasta ? format(fechaHasta, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={fechaHasta}
+                        onSelect={(date) => {
+                          setFechaHasta(date)
+                        }}
+                        disabled={(date) => {
+                          // must be after start date for recurrent reservations
+                          if (fecha && !isAfter(date, startOfDay(fecha))) return true
+                          // cannot be in the past
+                          if (isBefore(date, startOfDay(new Date()))) return true
+                          // cannot be beyond maxFechaReserva
+                          if (maxFechaReserva && isAfter(startOfDay(date), endOfDay(maxFechaReserva))) return true
+                          return false
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {errores.fechaHasta && <p className="text-sm text-destructive mt-1">{errores.fechaHasta}</p>}
+                </div>
+
+                {fechasGeneradas.length > 0 && (
+                  <div className="md:col-span-2">
+                    <Label>Fechas generadas ({fechasGeneradas.length} reservas)</Label>
+                    <div className="mt-2 p-3 bg-muted rounded-lg max-h-32 overflow-y-auto">
+                      <div className="flex flex-wrap gap-1">
+                        {fechasGeneradas.slice(0, 10).map((fecha, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {format(fecha, "dd/MM", { locale: es })}
+                          </Badge>
+                        ))}
+                        {fechasGeneradas.length > 10 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{fechasGeneradas.length - 10} más
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {errores.disponibilidadRecurrente && (
+                      <p className="text-sm text-destructive mt-1">{errores.disponibilidadRecurrente}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Selección de módulos */}
       <Card>
