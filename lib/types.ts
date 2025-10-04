@@ -85,12 +85,10 @@ export interface EquipoEscolar {
   id: string
   nombre: string
   descripcion?: string
-  disponible: boolean
   ubicacion?: string
-  requiereCapacitacion?: boolean
-  tipo?: string
-  estado?: string
-  observaciones?: string
+  disponible: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface ModuloHorario {
@@ -105,8 +103,9 @@ export interface Docente {
   nombre: string
   apellido: string
   curso: string // "1° A", "2° B", etc.
-  materia?: string
-  email?: string
+  materia: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface ReservaEscolar {
@@ -115,13 +114,18 @@ export interface ReservaEscolar {
   docenteId: string
   fecha: Date
   modulos: number[] // [1, 2, 3] para módulos 1°, 2° y 3°
-  observaciones?: string
   estado: "pendiente" | "confirmada" | "cancelada"
-  fechaCreacion: Date
-  esRecurrente?: boolean
-  frecuencia?: "diaria" | "semanal" | "mensual"
+  observaciones?: string
+  esRecurrente: boolean
+  frecuencia?: "diaria" | "semanal" | "quincenal" | "mensual"
   fechaFin?: Date
   grupoRecurrenteId?: string
+  fechaCreacion: Date
+  createdAt: Date
+  updatedAt: Date
+  // Relations
+  docente?: Docente
+  equipo?: EquipoEscolar
 }
 
 export interface DisponibilidadModulo {

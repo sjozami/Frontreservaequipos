@@ -1,0 +1,45 @@
+// Prisma schema for PostgreSQL
+// Define models for Reserva, Agrupacion, Docente, Equipo
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Docente {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  reservas  Reserva[]
+}
+
+model Equipo {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  descripcion String?
+  reservas  Reserva[]
+}
+
+model Agrupacion {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  reservas  Reserva[]
+}
+
+model Reserva {
+  id            Int         @id @default(autoincrement())
+  fecha         DateTime
+  docenteId     Int
+  equipoId      Int
+  agrupacionId  Int
+  estado        String      // pendiente, confirmada, cancelada
+  docente       Docente     @relation(fields: [docenteId], references: [id])
+  equipo        Equipo      @relation(fields: [equipoId], references: [id])
+  agrupacion    Agrupacion  @relation(fields: [agrupacionId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}

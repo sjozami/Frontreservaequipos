@@ -109,7 +109,7 @@ export function verificarDisponibilidadModulos(
       (typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toDateString() === fecha.toDateString() &&
       reserva.estado !== "cancelada"
     ) {
-      modulosOcupados.push(...reserva.modulosReservados)
+      modulosOcupados.push(...reserva.modulos)
     }
   })
 
@@ -169,7 +169,7 @@ export function validarReservaEscolar(
   const errores: string[] = []
 
   // Validar que los módulos estén en rango válido
-  const modulosInvalidos = nuevaReserva.modulosReservados.filter((m) => m < 1 || m > 15)
+  const modulosInvalidos = nuevaReserva.modulos.filter((m: number) => m < 1 || m > 15)
   if (modulosInvalidos.length > 0) {
     errores.push(`Módulos inválidos: ${modulosInvalidos.join(", ")}`)
   }
@@ -178,12 +178,12 @@ export function validarReservaEscolar(
   const { disponible, modulosOcupados } = verificarDisponibilidadModulos(
     nuevaReserva.equipoId,
     nuevaReserva.fecha,
-    nuevaReserva.modulosReservados,
+    nuevaReserva.modulos,
     reservasExistentes,
   )
 
   if (!disponible) {
-    const conflictos = nuevaReserva.modulosReservados.filter((m) => modulosOcupados.includes(m))
+    const conflictos = nuevaReserva.modulos.filter((m: number) => modulosOcupados.includes(m))
     errores.push(`Los siguientes módulos ya están ocupados: ${conflictos.join(", ")}`)
   }
 
@@ -241,7 +241,7 @@ export function calcularEstadisticasEquipo(
     (r) => r.equipoId === equipoId && r.fecha >= fechaInicio && r.fecha <= fechaFin && r.estado === "confirmada",
   )
 
-  const totalModulosReservados = reservasEquipo.reduce((total, r) => total + r.modulosReservados.length, 0)
+  const totalModulosReservados = reservasEquipo.reduce((total, r) => total + r.modulos.length, 0)
   const diasConReservas = new Set(reservasEquipo.map((r) => r.fecha.toDateString())).size
   const docentesUnicos = new Set(reservasEquipo.map((r) => r.docenteId)).size
 

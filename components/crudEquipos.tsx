@@ -11,8 +11,8 @@ import { Plus, Server, Pencil, Trash } from "lucide-react"
 interface Equipo {
   id: string
   nombre: string
-  descripcion: string
-  ubicacion: string
+  descripcion?: string
+  ubicacion?: string
   disponible: boolean
 }
 
@@ -22,20 +22,20 @@ export function CrudEquipos() {
   const [editando, setEditando] = useState<Equipo | null>(null)
   const [formData, setFormData] = useState({
     nombre: "",
-    descripcion: "",
-    ubicacion: "",
+    descripcion: "" as string | undefined,
+    ubicacion: "" as string | undefined,
     disponible: true,
   })
 
   // --- Cargar equipos desde backend
   const cargarEquipos = async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/equipos")
-      if (!res.ok) throw new Error("Error cargando equipos")
-      const data: Equipo[] = await res.json()
+      const { obtenerEquipos } = await import("@/lib/equipoController");
+      const data = await obtenerEquipos();
       setEquipos(data)
     } catch (err) {
       console.error("Error al cargar equipos", err)
+      alert("Error al cargar equipos. Por favor, recarga la página.");
     }
   }
 
@@ -50,21 +50,24 @@ export function CrudEquipos() {
 
   const handleGuardar = async () => {
     try {
+      const { crearEquipo, actualizarEquipo } = await import("@/lib/equipoController");
+      
       if (editando) {
-        const res = await fetch(`http://localhost:3000/api/equipos?id=${editando.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
-        if (!res.ok) throw new Error("Error actualizando equipo")
+        await actualizarEquipo(editando.id, {
+          nombre: formData.nombre,
+          descripcion: formData.descripcion || undefined,
+          ubicacion: formData.ubicacion || undefined,
+          disponible: formData.disponible,
+        });
       } else {
-        const res = await fetch("http://localhost:3000/api/equipos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
-        if (!res.ok) throw new Error("Error creando equipo")
+        await crearEquipo({
+          nombre: formData.nombre,
+          descripcion: formData.descripcion || undefined,
+          ubicacion: formData.ubicacion || undefined,
+          disponible: formData.disponible,
+        });
       }
+      
       await cargarEquipos()
       resetForm()
       setOpen(false)
@@ -78,8 +81,8 @@ export function CrudEquipos() {
     setEditando(equipo)
     setFormData({
       nombre: equipo.nombre,
-      descripcion: equipo.descripcion,
-      ubicacion: equipo.ubicacion,
+      descripcion: equipo.descripcion || "",
+      ubicacion: equipo.ubicacion || "",
       disponible: equipo.disponible,
     })
     setOpen(true)
@@ -88,8 +91,8 @@ export function CrudEquipos() {
   const handleEliminar = async (id: string) => {
     if (!confirm("¿Seguro que deseas eliminar este equipo?")) return
     try {
-      const res = await fetch(`http://localhost:3000/api/equipos?id=${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Error eliminando equipo")
+      const { eliminarEquipo } = await import("@/lib/equipoController");
+      await eliminarEquipo(id);
       setEquipos(equipos.filter((e) => e.id !== id))
     } catch (err) {
       console.error(err)
@@ -156,7 +159,7 @@ export function CrudEquipos() {
             <div>
               <p className="font-semibold">{equipo.nombre}</p>
               <p className="text-sm text-muted-foreground">
-                {equipo.descripcion} • {equipo.ubicacion} • {equipo.disponible ? "Disponible" : "No disponible"}
+                {equipo.descripcion || "Sin descripción"} • {equipo.ubicacion || "Sin ubicación"} • {equipo.disponible ? "Disponible" : "No disponible"}
               </p>
             </div>
             <div className="flex gap-2">

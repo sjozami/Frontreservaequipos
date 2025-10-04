@@ -4,14 +4,17 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Calendar, Users, Monitor } from "lucide-react"
-import { reservasEscolaresMock, docentesMock, equiposMock } from "@/lib/mock-data"
+import type { Docente, EquipoEscolar, ReservaEscolar } from "@/lib/types"
 import { MODULOS_HORARIOS } from "@/lib/constants"
 import { obtenerModuloActual, formatearHorario } from "@/lib/reservas-utils"
-import type { ReservaEscolar } from "@/lib/types"
+// import type { ReservaEscolar } from "@/lib/types"  // already imported above
 
 export default function DisplayPage() {
   const [horaActual, setHoraActual] = useState(new Date())
   const [moduloActual, setModuloActual] = useState<number>(0)
+  const [reservas, setReservas] = useState<ReservaEscolar[]>([])
+  const [docentes, setDocentes] = useState<Docente[]>([])
+  const [equipos, setEquipos] = useState<EquipoEscolar[]>([])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -29,27 +32,50 @@ export default function DisplayPage() {
   }, [])
 
   const hoy = new Date()
-  const reservasHoy = reservasEscolaresMock.filter((reserva) => {
-    const fechaReserva = new Date(reserva.fecha)
+  const reservasHoy = reservas.filter((reserva) => {
+    const fechaReserva = typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha
     return fechaReserva.toDateString() === hoy.toDateString()
   })
 
   const reservasActuales = reservasHoy.filter(
-    (reserva) => reserva.modulosReservados.includes(moduloActual) && reserva.estado === "confirmada",
+    (reserva) => reserva.modulos.includes(moduloActual) && reserva.estado === "confirmada",
   )
 
   const proximasReservas = reservasHoy
     .filter((reserva) => {
-      const primerModulo = Math.min(...reserva.modulosReservados)
+      const primerModulo = Math.min(...reserva.modulos)
       return primerModulo > moduloActual && primerModulo <= moduloActual + 3 && reserva.estado === "confirmada"
     })
-    .sort((a, b) => Math.min(...a.modulosReservados) - Math.min(...b.modulosReservados))
+    .sort((a, b) => Math.min(...a.modulos) - Math.min(...b.modulos))
 
   const obtenerInfoReserva = (reserva: ReservaEscolar) => {
-    const docente = docentesMock.find((d) => d.id === reserva.docenteId)
-    const equipo = equiposMock.find((e) => e.id === reserva.equipoId)
+    const docente = docentes.find((d) => d.id === reserva.docenteId)
+    const equipo = equipos.find((e) => e.id === reserva.equipoId)
     return { docente, equipo }
   }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { obtenerReservas } = await import('@/lib/reservaController');
+        const { obtenerDocentes } = await import('@/lib/docenteController');
+        const { obtenerEquipos } = await import('@/lib/equipoController');
+
+        const [reservasData, docentesData, equiposData] = await Promise.all([
+          obtenerReservas(),
+          obtenerDocentes(),
+          obtenerEquipos(),
+        ]);
+
+        setReservas(reservasData);
+        setDocentes(docentesData);
+        setEquipos(equiposData);
+      } catch (err) {
+        console.error('Error loading display data', err);
+      }
+    }
+    fetchData()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 p-6">
@@ -80,7 +106,7 @@ export default function DisplayPage() {
               })}
             </div>
             <div className="text-sm text-emerald-600 mt-1">
-              Módulo Actual: {moduloActual} ({MODULOS_HORARIOS[moduloActual - 1]?.horario || "Fuera de horario"})
+              Módulo Actual: {moduloActual} ({MODULOS_HORARIOS[moduloActual - 1] ? `${MODULOS_HORARIOS[moduloActual - 1].horaInicio} - ${MODULOS_HORARIOS[moduloActual - 1].horaFin}` : "Fuera de horario"})
             </div>
           </div>
         </div>
@@ -119,7 +145,7 @@ export default function DisplayPage() {
                         </p>
                         <p className="text-sm text-gray-600">{docente?.materia}</p>
                         <p className="text-sm font-medium">
-                          Módulos: {reserva.modulosReservados.join(", ")}({formatearHorario(reserva.modulosReservados)})
+                          Módulos: {reserva.modulos.join(", ")}({formatearHorario(reserva.modulos)})
                         </p>
                       </div>
                     </div>
@@ -147,7 +173,7 @@ export default function DisplayPage() {
               <div className="space-y-4">
                 {proximasReservas.slice(0, 4).map((reserva) => {
                   const { docente, equipo } = obtenerInfoReserva(reserva)
-                  const primerModulo = Math.min(...reserva.modulosReservados)
+                  const primerModulo = Math.min(...reserva.modulos)
                   const modulosHasta = primerModulo - moduloActual
 
                   return (
@@ -165,7 +191,7 @@ export default function DisplayPage() {
                         </p>
                         <p className="text-sm text-gray-600">{docente?.materia}</p>
                         <p className="text-sm font-medium">
-                          Módulos: {reserva.modulosReservados.join(", ")}({formatearHorario(reserva.modulosReservados)})
+                          Módulos: {reserva.modulos.join(", ")}({formatearHorario(reserva.modulos)})
                         </p>
                       </div>
                     </div>
@@ -186,7 +212,7 @@ export default function DisplayPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {equiposMock.map((equipo) => {
+            {equipos.map((equipo) => {
               const estaOcupado = reservasActuales.some((r) => r.equipoId === equipo.id)
               const proximaReserva = proximasReservas.find((r) => r.equipoId === equipo.id)
 
@@ -207,7 +233,7 @@ export default function DisplayPage() {
                     {estaOcupado
                       ? "En uso"
                       : proximaReserva
-                        ? `Próx: Mod ${Math.min(...proximaReserva.modulosReservados)}`
+                        ? `Próx: Mod ${Math.min(...proximaReserva.modulos)}`
                         : "Disponible"}
                   </p>
                 </div>

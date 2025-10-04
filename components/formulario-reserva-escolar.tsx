@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from "lucide-react"
-import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid } from "date-fns"
+import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
 import { MODULOS_HORARIOS } from "@/lib/constants"
@@ -61,6 +61,7 @@ export function FormularioReservaEscolar({
   const [fechaHasta, setFechaHasta] = useState<Date>()
   const [fechasGeneradas, setFechasGeneradas] = useState<Date[]>([])
   const [errores, setErrores] = useState<Record<string, string>>({})
+  const [reservasParaValidacion, setReservasParaValidacion] = useState<ReservaEscolar[]>(reservasExistentes)
 
   const generarFechasRecurrentes = (fechaInicio: Date, frecuencia: string, fechaFin: Date): Date[] => {
     const fechas: Date[] = []
@@ -117,7 +118,7 @@ export function FormularioReservaEscolar({
             equipoId,
             fechaReserva,
             modulosSeleccionados,
-            reservasExistentes,
+            reservasParaValidacion,
           )
           if (!disponibilidad.disponible) {
             fechasConflicto.push(format(fechaReserva, "dd/MM/yyyy", { locale: es }))
@@ -130,7 +131,7 @@ export function FormularioReservaEscolar({
       }
     } else {
       if (equipoId && fecha && modulosSeleccionados.length > 0) {
-        const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, modulosSeleccionados, reservasExistentes)
+        const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, modulosSeleccionados, reservasParaValidacion)
         if (!disponibilidad.disponible) {
           nuevosErrores.disponibilidad = `Módulos no disponibles: ${disponibilidad.modulosOcupados.join(", ")}`
         }
@@ -142,134 +143,116 @@ export function FormularioReservaEscolar({
   }
 
   const handleSeleccionarModulo = (modulo: number, seleccionado: boolean) => {
+    // Evitar seleccionar módulos no disponibles
+    const disponibilidad = getDisponibilidadModulo(modulo)
+    if (!disponibilidad.disponible) return
+
     if (seleccionado) {
-      setModulosSeleccionados([...modulosSeleccionados, modulo].sort((a, b) => a - b))
+      setModulosSeleccionados((prev) => [...new Set([...prev, modulo])].sort((a, b) => a - b))
     } else {
-      setModulosSeleccionados(modulosSeleccionados.filter((m) => m !== modulo))
+      setModulosSeleccionados((prev) => prev.filter((m) => m !== modulo))
     }
   }
 
   const handleSeleccionarRangoModulos = (inicio: number, fin: number) => {
-    const rango = []
+    const rango: number[] = []
     for (let i = inicio; i <= fin; i++) {
-      rango.push(i)
+      // sólo agregar si el módulo está disponible
+      const disponibilidad = getDisponibilidadModulo(i)
+      if (disponibilidad.disponible) rango.push(i)
     }
-    setModulosSeleccionados(rango)
+    setModulosSeleccionados((prev) => [...new Set([...prev, ...rango])].sort((a, b) => a - b))
+  }
+
+  const limpiarFormulario = () => {
+    setEquipoId('')
+    setDocenteId('')
+    setFecha(undefined)
+    setModulosSeleccionados([])
+    setObservaciones('')
+    setEstado('pendiente')
+    setEsRecurrente(false)
+    setFrecuencia('semanal')
+    setFechaHasta(undefined)
+    setFechasGeneradas([])
   }
 
   const handleGuardar = async () => {
-  if (!validarFormulario() || !fecha) return;
+    if (!validarFormulario() || !fecha) return;
 
-  console.log("[v0] Guardando reserva:", { esRecurrente, fechasGeneradas: fechasGeneradas.length });
+    console.log("[v0] Guardando reserva:", { esRecurrente, fechasGeneradas: fechasGeneradas.length });
 
-  // Función segura para crear reserva
-  const crearReserva = async (reserva: Omit<ReservaEscolar, "id" | "fechaCreacion"> & { modulosReservados?: number[], modulos?: number[] }) => {
     try {
-      if (!reserva.fecha) throw new Error("Fecha inválida");
+      const now = new Date()
+      
+      if (esRecurrente && fechasGeneradas.length > 0 && onCrearReservasRecurrentes) {
+        const grupoRecurrenteId = `grupo-rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      let fechaISO: string;
+        const reservasRecurrentes = fechasGeneradas.map((fechaReserva) => ({
+          equipoId,
+          docenteId,
+          fecha: fechaReserva,
+          modulos: modulosSeleccionados,
+          observaciones: `${observaciones}${observaciones ? " • " : ""}Reserva recurrente (${frecuencia})`,
+          estado,
+          esRecurrente: true,
+          frecuencia,
+          fechaFin: fechaHasta,
+          grupoRecurrenteId,
+          fechaCreacion: now,
+          createdAt: now,
+          updatedAt: now,
+        }));
 
-      if (reserva.fecha instanceof Date) {
-        fechaISO = reserva.fecha.toISOString();
-      } else if (typeof reserva.fecha === "string") {
-        // Convertimos "dd/MM/yyyy" a Date de forma segura
-        const fechaParsed = parse(reserva.fecha, "dd/MM/yyyy", new Date());
-        if (!isValid(fechaParsed)) throw new Error("Fecha inválida");
-        fechaISO = fechaParsed.toISOString();
-      } else {
-        throw new Error("Fecha inválida");
+        console.log("[v0] Creando reservas recurrentes:", reservasRecurrentes.length);
+        await onCrearReservasRecurrentes(reservasRecurrentes);
+      } else if (onCrearReserva) {
+        const nuevaReserva = {
+          equipoId,
+          docenteId,
+          fecha,
+          modulos: modulosSeleccionados.length > 0 ? modulosSeleccionados : [],
+          observaciones,
+          estado,
+          esRecurrente: false,
+          fechaCreacion: now,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        console.log("[v0] Creando reserva individual");
+        await onCrearReserva(nuevaReserva);
       }
-
-      const response = await fetch('http://localhost:3000/api/reservas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...reserva,
-          fecha: fechaISO,
-          modulosReservados: reserva.modulosReservados,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      console.log('Reserva creada:', data);
-
+      
+      // Limpiar el formulario después de crear exitosamente
+      limpiarFormulario();
     } catch (error) {
-      console.error('Error creating reserva:', error);
+      console.error('Error al guardar reserva:', error);
+      alert('Error al guardar la reserva. Por favor, inténtalo de nuevo.');
     }
   };
 
-  if (esRecurrente && fechasGeneradas.length > 0 && onCrearReservasRecurrentes) {
-    const grupoRecurrenteId = `grupo-rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    const reservasRecurrentes = fechasGeneradas.map((fechaReserva) => ({
-      equipoId,
-      docenteId,
-      fecha: fechaReserva,
-      modulosReservados: modulosSeleccionados,
-      observaciones: `${observaciones}${observaciones ? " • " : ""}Reserva recurrente (${frecuencia})`,
-      estado,
-      esRecurrente: true,
-      frecuencia,
-      fechaFin: fechaHasta,
-      grupoRecurrenteId,
-    }));
-
-    console.log("[v0] Creando reservas recurrentes:", reservasRecurrentes.length);
-    // onCrearReservasRecurrentes(reservasRecurrentes); // Si quieres actualizar el estado
-    reservasRecurrentes.forEach(crearReserva);
-  } else {
-    interface NuevaReserva extends Omit<ReservaEscolar, "id" | "fechaCreacion"> {
-      modulosReservados: number[];
-    }
-
-    const nuevaReserva: NuevaReserva = {
-      equipoId,
-      docenteId,
-      fecha, // Date, se parseará dentro de crearReserva
-      modulosReservados: modulosSeleccionados.length > 0 ? modulosSeleccionados : [],
-      observaciones,
-      estado,
-    };
-
-    console.log("[v0] Creando reserva individual");
-    // onCrearReserva(nuevaReserva); // Si quieres actualizar el estado
-    crearReserva(nuevaReserva);
-  }
-};
-
 
   useEffect(() => {
-    const fetchEquipos = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/equipos'); // Replace with your actual API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setEquipos(data);
+        const { obtenerEquipos } = await import("@/lib/equipoController");
+        const { obtenerDocentes } = await import("@/lib/docenteController");
+        
+        const [equiposData, docentesData] = await Promise.all([
+          obtenerEquipos(),
+          obtenerDocentes()
+        ]);
+        
+        setEquipos(equiposData);
+        setDocentes(docentesData);
       } catch (error) {
-        console.error('Error fetching equipos:', error);
-        // Optionally, display an error message to the user
+        console.error('Error fetching data:', error);
+        alert('Error al cargar los datos. Por favor, recarga la página.');
       }
     };
 
-    const fetchDocentes = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/docentes'); // Replace with your actual API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setDocentes(data);
-      } catch (error) {
-        console.error('Error fetching docentes:', error);
-        // Optionally, display an error message to the user
-      }
-    };
-
-    fetchEquipos();
-    fetchDocentes();
+    fetchData();
   }, []);
 
   const getEquipoSeleccionado = (): EquipoEscolar | undefined => {
@@ -293,7 +276,7 @@ export function FormularioReservaEscolar({
       return { disponible: false, razon: "Ya pasó" }
     }
 
-    const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasExistentes)
+    const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasParaValidacion)
     return {
       disponible: disponibilidad.disponible,
       razon: disponibilidad.disponible ? undefined : "Ocupado",
@@ -304,6 +287,37 @@ export function FormularioReservaEscolar({
   const docenteSeleccionado = getDocenteSeleccionado()
 
   useEffect(() => {
+    // Fetch latest reservations for the selected equipment + date (or date range for recurrent)
+    const fetchReservasParaValidacion = async () => {
+      try {
+        if (!equipoId) {
+          setReservasParaValidacion(reservasExistentes || [])
+          return
+        }
+
+        const { obtenerReservas } = await import('@/lib/reservaController')
+
+        if (fecha && fechaHasta && esRecurrente) {
+          const desde = startOfDay(fecha)
+          const hasta = endOfDay(fechaHasta)
+          const resultados = await obtenerReservas({ equipoId, desde, hasta })
+          setReservasParaValidacion(resultados)
+        } else if (fecha) {
+          const desde = startOfDay(fecha)
+          const hasta = endOfDay(fecha)
+          const resultados = await obtenerReservas({ equipoId, desde, hasta })
+          setReservasParaValidacion(resultados)
+        } else {
+          setReservasParaValidacion(reservasExistentes || [])
+        }
+      } catch (error) {
+        console.error('Error fetching reservations for validation:', error)
+        setReservasParaValidacion(reservasExistentes || [])
+      }
+    }
+
+    fetchReservasParaValidacion()
+
     if (fecha && fechaHasta && esRecurrente) {
       const fechas = generarFechasRecurrentes(fecha, frecuencia, fechaHasta)
       setFechasGeneradas(fechas)
@@ -389,7 +403,7 @@ export function FormularioReservaEscolar({
                     onSelect={(date) => {
                       setFecha(date)
                     }}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
                     initialFocus
                   />
                 </PopoverContent>
@@ -477,7 +491,7 @@ export function FormularioReservaEscolar({
                       onSelect={(date) => {
                         setFechaHasta(date)
                       }}
-                      disabled={(date) => (fecha ? date <= fecha : date < new Date())}
+                      disabled={(date) => (fecha ? !isAfter(date, startOfDay(fecha)) : isBefore(date, startOfDay(new Date())))}
                       initialFocus
                     />
                   </PopoverContent>
@@ -532,10 +546,10 @@ export function FormularioReservaEscolar({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const modulosDisponibles =
-                    fecha && isToday(fecha) ? [1, 2, 3, 4].filter((m) => !moduloYaPaso(m)) : [1, 2, 3, 4]
-                  if (modulosDisponibles.length > 0) {
-                    handleSeleccionarRangoModulos(Math.min(...modulosDisponibles), Math.max(...modulosDisponibles))
+                  const base = fecha && isToday(fecha) ? [1, 2, 3, 4].filter((m) => !moduloYaPaso(m)) : [1, 2, 3, 4]
+                  const disponibles = base.filter((m) => getDisponibilidadModulo(m).disponible)
+                  if (disponibles.length > 0) {
+                    handleSeleccionarRangoModulos(Math.min(...disponibles), Math.max(...disponibles))
                   }
                 }}
                 disabled={!equipoId || !fecha}
@@ -546,10 +560,10 @@ export function FormularioReservaEscolar({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const modulosDisponibles =
-                    fecha && isToday(fecha) ? [8, 9, 10, 11].filter((m) => !moduloYaPaso(m)) : [8, 9, 10, 11]
-                  if (modulosDisponibles.length > 0) {
-                    handleSeleccionarRangoModulos(Math.min(...modulosDisponibles), Math.max(...modulosDisponibles))
+                  const base = fecha && isToday(fecha) ? [8, 9, 10, 11].filter((m) => !moduloYaPaso(m)) : [8, 9, 10, 11]
+                  const disponibles = base.filter((m) => getDisponibilidadModulo(m).disponible)
+                  if (disponibles.length > 0) {
+                    handleSeleccionarRangoModulos(Math.min(...disponibles), Math.max(...disponibles))
                   }
                 }}
                 disabled={!equipoId || !fecha}

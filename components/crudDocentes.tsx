@@ -31,17 +31,13 @@ export function CrudDocentes() {
 
   // --- Cargar docentes desde backend
   const cargarDocentes = async () => {
-    let res, text;
     try {
-      res = await fetch("http://localhost:3000/api/docentes");
-      text = await res.text();
-      const data = JSON.parse(text);
+      const { obtenerDocentes } = await import("@/lib/docenteController");
+      const data = await obtenerDocentes();
       setDocentes(data);
     } catch (err) {
       console.error("Error al cargar docentes", err);
-      if (err instanceof SyntaxError) {
-        console.error("Response text:", text);
-      }
+      alert("Error al cargar docentes. Por favor, recarga la página.");
     }
   }
 
@@ -56,21 +52,24 @@ export function CrudDocentes() {
 
   const handleGuardar = async () => {
     try {
+      const { crearDocente, actualizarDocente } = await import("@/lib/docenteController");
+      
       if (editando) {
-        const res = await fetch(`http://localhost:3000/api/docentes?id=${editando.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
-        if (!res.ok) throw new Error("Error actualizando docente")
+        await actualizarDocente(editando.id, {
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          curso: formData.curso,
+          materia: formData.materia,
+        });
       } else {
-        const res = await fetch("http://localhost:3000/api/docentes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
-        if (!res.ok) throw new Error("Error creando docente")
+        await crearDocente({
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          curso: formData.curso,
+          materia: formData.materia,
+        });
       }
+      
       await cargarDocentes()
       resetForm()
       setOpen(false)
@@ -95,10 +94,8 @@ export function CrudDocentes() {
   const handleEliminar = async (id: string) => {
     if (!confirm("¿Seguro que deseas eliminar este docente?")) return
     try {
-      const res = await fetch(`http://localhost:3000/api/docentes?id=${id}`, {
-        method: "DELETE",
-      })
-      if (!res.ok) throw new Error("Error eliminando docente")
+      const { eliminarDocente } = await import("@/lib/docenteController");
+      await eliminarDocente(id);
       setDocentes(docentes.filter((d) => d.id !== id))
     } catch (err) {
       console.error(err)

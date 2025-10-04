@@ -27,7 +27,8 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
 
   const getFechaFinalizacion = () => {
     if (reserva.esRecurrente && reserva.fechaFin) {
-      return reserva.fechaFin.toLocaleDateString("es-ES", {
+      const fecha = typeof reserva.fechaFin === 'string' ? new Date(reserva.fechaFin) : reserva.fechaFin;
+      return fecha.toLocaleDateString("es-ES", {
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -108,8 +109,8 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
                 <p className="font-medium">{docente?.materia}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Email:</span>
-                <p className="font-medium">{docente?.email}</p>
+                <span className="text-muted-foreground">ID:</span>
+                <p className="font-medium">{docente?.id}</p>
               </div>
             </div>
           </div>
@@ -127,7 +128,7 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Fecha de inicio:</span>
                 <span className="font-medium">
-                  {reserva.fecha.toLocaleDateString("es-ES", {
+                  {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
@@ -148,14 +149,14 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Módulos:</span>
                 <span className="font-medium">
-                  {reserva.modulosReservados.join(", ")} • {formatearHorarioModulos(reserva.modulosReservados)}
+                  {reserva.modulos.join(", ")} • {formatearHorarioModulos(reserva.modulos)}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Duración:</span>
-                <span className="font-medium">{reserva.modulosReservados.length} módulos (160 minutos)</span>
+                <span className="font-medium">{reserva.modulos.length} módulos ({reserva.modulos.length * 40} minutos)</span>
               </div>
 
               {reserva.esRecurrente && (
@@ -194,8 +195,8 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
               <div>
                 <span className="text-muted-foreground">Fecha de creación:</span>
                 <p className="font-medium">
-                  {reserva.fechaCreacion.toLocaleDateString("es-ES")} a las{" "}
-                  {reserva.fechaCreacion.toLocaleTimeString("es-ES", {
+                  {(typeof reserva.fechaCreacion === 'string' ? new Date(reserva.fechaCreacion) : reserva.fechaCreacion).toLocaleDateString("es-ES")} a las{" "}
+                  {(typeof reserva.fechaCreacion === 'string' ? new Date(reserva.fechaCreacion) : reserva.fechaCreacion).toLocaleTimeString("es-ES", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}

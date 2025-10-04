@@ -50,8 +50,8 @@ export function EditarReservaModal({
         observaciones: reserva.observaciones || "",
         estado: reserva.estado,
       })
-      setModulosSeleccionados(reserva.modulosReservados)
-      setFechaSeleccionada(reserva.fecha)
+      setModulosSeleccionados(reserva.modulos)
+      setFechaSeleccionada(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha)
     }
   }, [reserva])
 
@@ -88,7 +88,7 @@ export function EditarReservaModal({
       docenteId: formData.docenteId,
       equipoId: formData.equipoId,
       fecha: fechaSeleccionada,
-      modulosReservados: modulosSeleccionados,
+      modulos: modulosSeleccionados,
       observaciones: formData.observaciones || "",
       estado: formData.estado || "pendiente",
     }

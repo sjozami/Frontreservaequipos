@@ -31,6 +31,7 @@ import { formatearHorarioModulos, agruparReservasEscolares } from "@/lib/reserva
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types"
 import Link from "next/link"
 import { FormularioReservaEscolar } from "@/components/formulario-reserva-escolar"
+import AdminReservasTable from "@/components/admin-reservas-table"
 import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { EditarReservaModal } from "@/components/editar-reserva-modal"
 import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
@@ -52,51 +53,29 @@ export default function ReservasEscolaresPage() {
   const [modalCancelar, setModalCancelar] = useState(false);
 
   useEffect(() => {
-    const fetchReservas = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/reservas'); // Replace with your actual API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setReservas(data);
+        // Use controller functions consistently for all data loads
+        const { obtenerReservas } = await import('@/lib/reservaController');
+        const { obtenerEquipos } = await import('@/lib/equipoController');
+        const { obtenerDocentes } = await import('@/lib/docenteController');
+
+        const [reservasData, equiposData, docentesData] = await Promise.all([
+          obtenerReservas(),
+          obtenerEquipos(),
+          obtenerDocentes(),
+        ]);
+
+        setReservas(reservasData);
+        setEquipos(equiposData);
+        setDocentes(docentesData);
       } catch (error) {
-        console.error('Error fetching reservas:', error);
-        // Optionally, display an error message to the user
+        console.error('Error fetching initial data:', error);
+        alert('Error al cargar los datos iniciales. Asegúrate de que el backend esté en ejecución.');
       }
     };
 
-    const fetchEquipos = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/equipos'); // Replace with your actual API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setEquipos(data);
-      } catch (error) {
-        console.error('Error fetching equipos:', error);
-        // Optionally, display an error message to the user
-      }
-    };
-
-    const fetchDocentes = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/docentes'); // Replace with your actual API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setDocentes(data);
-      } catch (error) {
-        console.error('Error fetching docentes:', error);
-        // Optionally, display an error message to the user
-      }
-    };
-
-    fetchReservas();
-    fetchEquipos();
-    fetchDocentes();
+    fetchData();
   }, []);
 
   const agrupacionesEscolares = useMemo(() => agruparReservasEscolares(reservas), [reservas]);
@@ -147,24 +126,46 @@ export default function ReservasEscolaresPage() {
     }
   }, [reservas, equipos])
 
-  const handleCrearReserva = (nuevaReserva: Omit<ReservaEscolar, "id" | "fechaCreacion">) => {
-    const reserva: ReservaEscolar = {
-      ...nuevaReserva,
-      id: `res-esc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      fechaCreacion: new Date(),
+  const handleCrearReserva = async (nuevaReserva: Omit<ReservaEscolar, "id" | "fechaCreacion">) => {
+    try {
+      // Use the controller function to create the reservation
+      const { crearReserva, obtenerReservas } = await import('@/lib/reservaController');
+      
+      const reservaCreada = await crearReserva({
+        fecha: nuevaReserva.fecha,
+        modulos: nuevaReserva.modulos,
+        docenteId: nuevaReserva.docenteId,
+        equipoId: nuevaReserva.equipoId,
+        estado: nuevaReserva.estado,
+        observaciones: nuevaReserva.observaciones,
+        esRecurrente: nuevaReserva.esRecurrente,
+        frecuencia: nuevaReserva.frecuencia,
+        fechaFin: nuevaReserva.fechaFin,
+      });
+      
+      // Refresh the entire list to get the proper data including any series created
+      const reservasActualizadas = await obtenerReservas();
+      setReservas(reservasActualizadas);
+      setDialogNuevaReserva(false)
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      alert('Error al crear la reserva. Por favor, inténtalo de nuevo.');
     }
-    setReservas([...reservas, reserva])
-    setDialogNuevaReserva(false)
   }
 
-  const handleCrearReservasRecurrentes = (nuevasReservas: Omit<ReservaEscolar, "id" | "fechaCreacion">[]) => {
-    const reservasConId = nuevasReservas.map((reserva, index) => ({
-      ...reserva,
-      id: `res-esc-rec-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-      fechaCreacion: new Date(),
-    }))
-    setReservas([...reservas, ...reservasConId])
-    setDialogNuevaReserva(false)
+  const handleCrearReservasRecurrentes = async (nuevasReservas: Omit<ReservaEscolar, "id" | "fechaCreacion">[]) => {
+    try {
+      // For recurring reservations, we typically create the first one with recurrence settings
+      // The backend should handle creating the series automatically
+      if (nuevasReservas.length > 0) {
+        const primeraReserva = nuevasReservas[0];
+        await handleCrearReserva(primeraReserva);
+      }
+      setDialogNuevaReserva(false)
+    } catch (error) {
+      console.error('Error creating recurring reservations:', error);
+      alert('Error al crear las reservas recurrentes. Por favor, inténtalo de nuevo.');
+    }
   }
 
   const getHorarioBadge = (modulos: number[] | undefined) => {
@@ -208,17 +209,60 @@ export default function ReservasEscolaresPage() {
     setModalCancelar(true)
   }
 
-  const handleGuardarEdicion = (reservaEditada: ReservaEscolar) => {
-    setReservas(reservas.map((r) => (r.id === reservaEditada.id ? reservaEditada : r)))
-    setModalEditar(false)
-    setReservaSeleccionada(null)
+  // Typed wrappers for table callbacks
+  const handleTableView = (r: ReservaEscolar) => { setReservaSeleccionada(r); setModalDetalle(true) }
+  const handleTableEdit = (r: ReservaEscolar) => { setReservaSeleccionada(r); setModalEditar(true) }
+  const handleTableCancel = (r: ReservaEscolar) => { setReservaSeleccionada(r); setModalCancelar(true) }
+
+  const handleGuardarEdicion = async (reservaEditada: ReservaEscolar) => {
+    try {
+      // Use the controller function to update the reservation
+      const { actualizarReserva, obtenerReservas } = await import('@/lib/reservaController');
+      
+      const reservaActualizada = await actualizarReserva(reservaEditada.id, {
+        fecha: reservaEditada.fecha,
+        modulos: reservaEditada.modulos,
+        docenteId: reservaEditada.docenteId,
+        equipoId: reservaEditada.equipoId,
+        estado: reservaEditada.estado,
+        observaciones: reservaEditada.observaciones,
+      });
+      
+      // Update local state with the response from the backend
+      setReservas(reservas.map((r) => (r.id === reservaEditada.id ? reservaActualizada : r)))
+      setModalEditar(false)
+      setReservaSeleccionada(null)
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      alert('Error al actualizar la reserva. Por favor, inténtalo de nuevo.');
+    }
   }
 
-  const handleConfirmarCancelacion = (reserva: ReservaEscolar) => {
-    const reservaCancelada = { ...reserva, estado: "cancelada" as const }
-    setReservas(reservas.map((r) => (r.id === reserva.id ? reservaCancelada : r)))
-    setModalCancelar(false)
-    setReservaSeleccionada(null)
+  const handleConfirmarCancelacion = async (reserva: ReservaEscolar) => {
+    console.log('🚮 Attempting to cancel reservation:', reserva.id);
+    try {
+      // Use the controller function to cancel the reservation
+      const { cancelarReserva } = await import('@/lib/reservaController');
+      
+      console.log('📞 Calling cancelarReserva with ID:', reserva.id);
+      const reservaCancelada = await cancelarReserva(reserva.id);
+      console.log('✅ Reservation cancelled successfully:', reservaCancelada);
+      
+      // Update local state with the cancelled reservation
+      setReservas(reservas.map((r) => (r.id === reserva.id ? reservaCancelada : r)))
+      setModalCancelar(false)
+      setReservaSeleccionada(null)
+      
+      console.log('🔄 UI state updated successfully');
+    } catch (error) {
+      console.error('💥 Error cancelling reservation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('failed to fetch') || errorMessage.toLowerCase().includes('networkerror')) ) {
+        alert('Error de red: no se pudo contactar al backend. Asegúrate de que el servidor backend esté ejecutándose en http://localhost:3000 y vuelve a intentarlo.');
+      } else {
+        alert(`Error al cancelar la reserva: ${errorMessage}. Por favor, inténtalo de nuevo.`);
+      }
+    }
   }
 
   const getInfoAdicional = (reserva: ReservaEscolar) => {
@@ -270,28 +314,76 @@ export default function ReservasEscolaresPage() {
     setModalEditar(true)
   }
 
-  const handleCancelarGrupo = (reservasGrupo: ReservaEscolar[]) => {
+  const handleCancelarGrupo = async (reservasGrupo: ReservaEscolar[]) => {
+    const { logReservationFields } = await import('@/lib/debug');
+    console.log('Cancelling group, first reservation:');
+    logReservationFields(reservasGrupo[0]);
     setReservaSeleccionada(reservasGrupo[0])
     setModalCancelar(true)
   }
 
-  const handleConfirmarCancelacionGrupo = (reserva: ReservaEscolar) => {
-    // Cancelar todas las reservas del grupo
-    const grupoId = reserva.grupoRecurrenteId
-    if (grupoId) {
-      const reservasActualizadas = reservas.map((r) =>
-        r.grupoRecurrenteId === grupoId ? { ...r, estado: "cancelada" as const } : r,
-      )
-      setReservas(reservasActualizadas)
+  const handleConfirmarCancelacionGrupo = async (reserva: ReservaEscolar) => {
+    try {
+      // Cancelar todas las reservas del grupo
+      const grupoId = reserva.grupoRecurrenteId
+      console.log('Attempting to cancel group with ID:', grupoId);
+      
+      if (!grupoId) {
+        throw new Error('No se encontró el ID del grupo de reservas');
+      }
+      
+      // Use the controller function to cancel the series
+      const { cancelarSerie, obtenerReservas } = await import('@/lib/reservaController');
+      
+      const result = await cancelarSerie(grupoId);
+      console.log('Cancel series result:', result);
+      
+      // Refresh the reservations list
+      const reservasActualizadas = await obtenerReservas();
+      setReservas(reservasActualizadas);
+      console.log('Reservations refreshed successfully');
+      
+      setModalCancelar(false)
+      setReservaSeleccionada(null)
+    } catch (error) {
+      console.error('Error cancelling reservation series:', error);
+      alert(`Error al cancelar la serie de reservas: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-    setModalCancelar(false)
-    setReservaSeleccionada(null)
+  }
+
+  // Cancel a series by grupoId (used by admin table)
+  const handleCancelSerieById = async (grupoId: string) => {
+    try {
+      if (!grupoId) throw new Error('No se proporcionó grupoId')
+      const { cancelarSerie, obtenerReservas } = await import('@/lib/reservaController')
+      const result = await cancelarSerie(grupoId)
+      console.log('Cancel series result:', result)
+      const reservasActualizadas = await obtenerReservas()
+      setReservas(reservasActualizadas)
+      setModalCancelar(false)
+      setReservaSeleccionada(null)
+    } catch (error) {
+      console.error('Error cancelling series by id:', error)
+      alert(`Error al cancelar la serie: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+    }
   }
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <HeaderProfesional />
+
+      {/* Sección informativa para el administrador */}
+      <div className="container mx-auto px-6 pt-6 pb-2">
+        <Card className="mb-6 shadow-professional border-l-4 border-l-primary/40">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold text-primary">Administración General</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Desde este panel puedes administrar la carga de <b>equipos</b> y <b>docentes</b>, así como la <b>asignación y reserva</b> de equipos escolares. Utiliza los accesos directos para gestionar cada área y mantener actualizado el sistema.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
 
       <div className="container mx-auto px-6 py-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -370,13 +462,22 @@ export default function ReservasEscolaresPage() {
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/agrupaciones">
+                <Link href="/docentes">
                   <Button
                     variant="outline"
                     className="shadow-sm hover:shadow-md transition-shadow bg-transparent w-full sm:w-auto"
                   >
                     <Users className="w-4 h-4 mr-2" />
-                    Gestionar Agrupaciones
+                    Gestionar Docentes
+                  </Button>
+                </Link>
+                <Link href="/equipos">
+                  <Button
+                    variant="outline"
+                    className="shadow-sm hover:shadow-md transition-shadow bg-transparent w-full sm:w-auto"
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Gestionar Equipos
                   </Button>
                 </Link>
                 <Dialog open={dialogNuevaReserva} onOpenChange={setDialogNuevaReserva}>
@@ -478,224 +579,23 @@ export default function ReservasEscolaresPage() {
                   </Card>
                 ) : (
                   <div className="space-y-6">
-                    {Array.from(gruposRecurrentes.entries()).map(([grupoId, reservasGrupo]) => {
-                      const docente = docentes.find((d) => d.id === reservasGrupo[0].docenteId)
-                      const equipo = equipos.find((e) => e.id === reservasGrupo[0].equipoId)
-                      const fechaInicio = new Date(Math.min(...reservasGrupo.map((r) => r.fecha.getTime())))
-                      const fechaFin = new Date(Math.max(...reservasGrupo.map((r) => r.fecha.getTime())))
-                      const totalModulos = reservasGrupo.reduce((total, r) => total + r.modulos.length, 0)
+                    
 
-                      return (
-                        <Card
-                          key={`grupo-${grupoId}`}
-                          className="shadow-professional hover:shadow-professional-lg transition-all duration-300 animate-slide-up border-l-4 border-l-accent/50 bg-gradient-to-r from-accent/5 to-transparent"
-                        >
-                          <CardHeader className="pb-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2">
-                                <CardTitle className="text-xl flex items-center gap-3">
-                                  <div className="p-2 bg-accent/10 rounded-lg">
-                                    <Repeat className="h-5 w-5 text-accent" />
-                                  </div>
-                                  {equipo?.nombre || "Equipo desconocido"}
-                                  <Badge variant="secondary" className="bg-accent/10 text-accent">
-                                    <Repeat className="w-3 h-3 mr-1" />
-                                    {reservasGrupo[0].frecuencia} • {reservasGrupo.length} reservas
-                                  </Badge>
-                                </CardTitle>
-                                <CardDescription className="text-base">
-                                  <span className="font-medium">
-                                    {docente?.nombre} {docente?.apellido}
-                                  </span>{" "}
-                                  •<span className="text-primary"> {docente?.curso}</span> •
-                                  <span className="italic"> {docente?.materia}</span>
-                                </CardDescription>
-                              </div>
-                              <Badge
-                                variant={
-                                  reservasGrupo[0].estado === "confirmada"
-                                    ? "default"
-                                    : reservasGrupo[0].estado === "pendiente"
-                                      ? "secondary"
-                                      : "destructive"
-                                }
-                                className="text-sm px-3 py-1"
-                              >
-                                {reservasGrupo[0].estado.charAt(0).toUpperCase() + reservasGrupo[0].estado.slice(1)}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3 mb-6">
-                              <div className="flex items-center gap-3 p-3 bg-accent/10 rounded-lg">
-                                <Calendar className="w-5 h-5 text-accent" />
-                                <span className="font-medium">
-                                  Desde {(typeof fechaInicio === 'string' ? new Date(fechaInicio) : fechaInicio).toLocaleDateString("es-ES")} hasta{" "}
-                                  {(typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin).toLocaleDateString("es-ES")}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                <Clock className="w-5 h-5 text-accent" />
-                                <span>
-                                  <span className="font-medium">Total módulos:</span> {totalModulos} •
-                                  <span className="text-accent font-medium">
-                                    {" "}
-                                    {formatearHorarioModulos(reservasGrupo[0].modulos)} cada{" "}
-                                    {reservasGrupo[0].frecuencia}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                                <TrendingUp className="w-5 h-5 text-primary" />
-                                <span className="font-medium text-primary">
-                                  Reserva recurrente • {reservasGrupo.length} fechas programadas
-                                </span>
-                              </div>
-                              {reservasGrupo[0].observaciones && (
-                                <div className="p-3 bg-card rounded-lg border">
-                                  <p className="text-sm text-muted-foreground italic">
-                                    "{reservasGrupo[0].observaciones}"
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-3">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleVerDetalleGrupo(reservasGrupo)}
-                                className="shadow-sm hover:shadow-md transition-shadow"
-                              >
-                                Ver Detalles del Grupo
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditarGrupo(reservasGrupo)}
-                                className="shadow-sm hover:shadow-md transition-shadow"
-                              >
-                                Editar Serie
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleCancelarGrupo(reservasGrupo)}
-                                className="shadow-sm hover:shadow-md transition-shadow"
-                              >
-                                Cancelar Serie
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-
-                    {reservasFiltradas
-                      .filter((reserva) => !reserva.esRecurrente || !reserva.grupoRecurrenteId)
-                      .map((reserva, index) => {
-                        const docente = docentes.find((d) => d.id === reserva.docenteId)
-                        const equipo = equipos.find((e) => e.id === reserva.equipoId)
-                        const infoAdicional = getInfoAdicional(reserva)
-
-                        return (
-                          <Card
-                            key={reserva.id}
-                            className="shadow-professional hover:shadow-professional-lg transition-all duration-300 animate-slide-up border-l-4 border-l-primary/20"
-                            style={{ animationDelay: `${(index + gruposRecurrentes.size) * 0.1}s` }}
-                          >
-                            <CardHeader>
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-2">
-                                  <CardTitle className="text-xl flex items-center gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                      <Package className="h-5 w-5 text-primary" />
-                                    </div>
-                                    {equipo?.nombre || "Equipo desconocido"}
-                                    {infoAdicional.length > 0 && (
-                                      <div className="flex gap-2">
-                                        {infoAdicional.map((info, idx) => (
-                                          <Badge key={idx} variant="secondary" className="bg-accent/10 text-accent">
-                                            {info}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </CardTitle>
-                                  <CardDescription className="text-base">
-                                    <span className="font-medium">
-                                      {docente?.nombre} {docente?.apellido}
-                                    </span>{" "}
-                                    •<span className="text-primary"> {docente?.curso}</span> •
-                                    <span className="italic"> {docente?.materia}</span>
-                                  </CardDescription>
-                                </div>
-                                <Badge
-                                  variant={
-                                    reserva.estado === "confirmada"
-                                      ? "default"
-                                      : reserva.estado === "pendiente"
-                                        ? "secondary"
-                                        : "destructive"
-                                  }
-                                  className="text-sm px-3 py-1"
-                                >
-                                  {reserva.estado.charAt(0).toUpperCase() + reserva.estado.slice(1)}
-                                </Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-3 mb-6">
-                                <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
-                                  <Calendar className="w-5 h-5 text-primary" />
-                                  <span className="font-medium">
-                                    {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES", {
-                                      weekday: "long",
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    })}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                  <Clock className="w-5 h-5 text-primary" />
-                                  <span>{JSON.stringify(reserva.modulos)}</span>
-                                </div>
-                                {reserva.observaciones && (
-                                  <div className="p-3 bg-card rounded-lg border">
-                                    <p className="text-sm text-muted-foreground italic">"{reserva.observaciones}"</p>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex gap-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleVerDetalle(reserva)}
-                                  className="shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                  Ver Detalles
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEditar(reserva)}
-                                  className="shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                  Editar
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleCancelar(reserva)}
-                                  className="shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
+                    <div>
+                      {/* Tabla administrativa con paginación */}
+                      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                      {/* @ts-ignore */}
+                      <AdminReservasTable
+                        reservas={reservasFiltradas}
+                        docentes={docentes}
+                        equipos={equipos}
+                        pageSize={10}
+                        onView={handleTableView}
+                        onEdit={handleTableEdit}
+                        onCancel={handleTableCancel}
+                        onCancelSeries={handleCancelSerieById}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -774,7 +674,7 @@ export default function ReservasEscolaresPage() {
                                   <span>{equipo?.nombre}</span>
                                   <span className="text-muted-foreground">
                                     {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES")} •{" "}
-                                    {JSON.stringify(reserva.modulos)}
+                                    {formatearHorarioModulos(reserva.modulos)}
                                   </span>
                                 </div>
                               )
