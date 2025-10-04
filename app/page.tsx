@@ -37,6 +37,8 @@ import { EditarReservaModal } from "@/components/editar-reserva-modal"
 import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
 import { HeaderProfesional } from "@/components/header-profesional";
 import { useEffect } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as UiCalendar } from "@/components/ui/calendar"
 
 export default function ReservasEscolaresPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -51,6 +53,7 @@ export default function ReservasEscolaresPage() {
   const [modalDetalle, setModalDetalle] = useState(false)
   const [modalEditar, setModalEditar] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false);
+  const [filtroFecha, setFiltroFecha] = useState<Date | null>(null); // Add state for date filter
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,14 +93,15 @@ export default function ReservasEscolaresPage() {
         docente?.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
         docente?.curso.toLowerCase().includes(searchTerm.toLowerCase()) ||
         equipo?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reserva.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
+        reserva.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const coincideEstado = filtroEstado === "todos" || reserva.estado === filtroEstado
       const coincideEquipo = filtroEquipo === "todos" || reserva.equipoId === filtroEquipo
+      const coincideFecha = !filtroFecha || (typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toDateString() === filtroFecha.toDateString();
 
-      return coincideBusqueda && coincideEstado && coincideEquipo
+      return coincideBusqueda && coincideEstado && coincideEquipo && coincideFecha
     })
-  }, [reservas, searchTerm, filtroEstado, filtroEquipo])
+  }, [reservas, searchTerm, filtroEstado, filtroEquipo, filtroFecha])
 
   const estadisticasEscolares = useMemo(() => {
     const totalReservas = reservas.length
@@ -543,6 +547,21 @@ export default function ReservasEscolaresPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-48 justify-start text-left font-normal bg-transparent">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {filtroFecha ? filtroFecha.toLocaleDateString('es-ES') : 'Seleccionar fecha'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <UiCalendar
+                      mode="single"
+                      selected={filtroFecha || new Date()}
+                      onSelect={(date) => date && setFiltroFecha(date)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>

@@ -3,8 +3,8 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { HeaderProfesional } from "@/components/header-profesional"
-import { CrudEquipos } from "../../components/crudEquipos"
-import { Server } from "lucide-react" // ícono representativo de equipos
+import { CrudEquipos } from "@/components/crudEquipos"
+import { Server } from "lucide-react"
 
 export default function EquiposPage() {
   return (
