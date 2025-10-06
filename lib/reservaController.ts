@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import authService from './auth-service';
 import type { ReservaEscolar } from './types';
 
 export interface CrearReservaData {
@@ -31,11 +31,18 @@ export interface FiltrosReserva {
 }
 
 export async function crearReserva(data: CrearReservaData): Promise<ReservaEscolar> {
+  console.log("[reservaController] Fecha recibida:", data.fecha?.toISOString());
+  
   // Map frontend field names to backend expected names
-  // Ensure fecha and fechaFin are normalized to date-only UTC to avoid timezone shifts
+  // Preserve the selected date by using local timezone components to create UTC date
   const normalizeToDateOnlyUTC = (d?: Date) => {
     if (!d) return undefined
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    // Always create a new date with just the date components to avoid timezone issues
+    // This ensures October 7 stays as October 7, regardless of timezone
+    const localDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const utcDate = new Date(Date.UTC(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()))
+    console.log("[reservaController] Fecha normalizada:", utcDate.toISOString());
+    return utcDate
   }
 
   const backendData = {
@@ -52,32 +59,50 @@ export async function crearReserva(data: CrearReservaData): Promise<ReservaEscol
   }
   delete (backendData as any).modulos; // Remove the frontend field name
   
-  return await apiClient.post<ReservaEscolar>('/api/reservas', backendData);
+  const result = await authService.post<ReservaEscolar>('/api/reservas', backendData);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function obtenerReservas(filtros?: FiltrosReserva): Promise<ReservaEscolar[]> {
-  const searchParams = new URLSearchParams();
-  
-  if (filtros?.equipoId) searchParams.append('equipoId', filtros.equipoId);
-  if (filtros?.docenteId) searchParams.append('docenteId', filtros.docenteId);
-  if (filtros?.estado) searchParams.append('estado', filtros.estado);
-  if (filtros?.desde) searchParams.append('desde', filtros.desde.toISOString());
-  if (filtros?.hasta) searchParams.append('hasta', filtros.hasta.toISOString());
-  
-  const queryString = searchParams.toString();
-  const endpoint = queryString ? `/api/reservas?${queryString}` : '/api/reservas';
-  
-  return await apiClient.get<ReservaEscolar[]>(endpoint);
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (filtros?.equipoId) searchParams.append('equipoId', filtros.equipoId);
+    if (filtros?.docenteId) searchParams.append('docenteId', filtros.docenteId);
+    if (filtros?.estado) searchParams.append('estado', filtros.estado);
+    if (filtros?.desde) searchParams.append('desde', filtros.desde.toISOString());
+    if (filtros?.hasta) searchParams.append('hasta', filtros.hasta.toISOString());
+    
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/api/reservas?${queryString}` : '/api/reservas';
+    
+    const result = await authService.get<ReservaEscolar[]>(endpoint);
+    if (result.error) {
+      console.warn('Error fetching reservas:', result.error);
+      return []; // Return empty array instead of throwing
+    }
+    return result.data || [];
+  } catch (error) {
+    console.warn('Network error fetching reservas:', error);
+    return []; // Return empty array on network errors
+  }
 }
 
 export async function obtenerReserva(id: string): Promise<ReservaEscolar> {
-  return await apiClient.get<ReservaEscolar>(`/api/reservas/${id}`);
+  const result = await authService.get<ReservaEscolar>(`/api/reservas/${id}`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function actualizarReserva(id: string, data: ActualizarReservaData): Promise<ReservaEscolar> {
   const normalizeToDateOnlyUTC = (d?: Date) => {
     if (!d) return undefined
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    // Use the local date components to preserve the selected day
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const date = d.getDate()
+    return new Date(Date.UTC(year, month, date))
   }
 
   const payload = {
@@ -85,13 +110,19 @@ export async function actualizarReserva(id: string, data: ActualizarReservaData)
     fecha: normalizeToDateOnlyUTC(data.fecha as Date | undefined),
   }
 
-  return await apiClient.patch<ReservaEscolar>(`/api/reservas/${id}`, payload);
+  const result = await authService.put<ReservaEscolar>(`/api/reservas/${id}`, payload);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function cancelarReserva(id: string): Promise<ReservaEscolar> {
-  return await apiClient.delete<ReservaEscolar>(`/api/reservas/${id}`);
+  const result = await authService.delete<ReservaEscolar>(`/api/reservas/${id}`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function cancelarSerie(grupoId: string): Promise<{ updated: number }> {
-  return await apiClient.delete<{ updated: number }>(`/api/reservas/serie/${grupoId}`);
+  const result = await authService.delete<{ updated: number }>(`/api/reservas/serie/${grupoId}`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }

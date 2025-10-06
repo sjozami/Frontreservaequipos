@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import authService from './auth-service';
 import type { Docente } from './types';
 
 export interface CrearDocenteData {
@@ -16,17 +16,33 @@ export interface ActualizarDocenteData {
 }
 
 export async function crearDocente(data: CrearDocenteData): Promise<Docente> {
-  return await apiClient.post<Docente>('/api/docentes', data);
+  const result = await authService.post<Docente>('/api/docentes', data);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function obtenerDocentes(): Promise<Docente[]> {
-  return await apiClient.get<Docente[]>('/api/docentes');
+  try {
+    const result = await authService.get<Docente[]>('/api/docentes');
+    if (result.error) {
+      console.warn('Error fetching docentes:', result.error);
+      return []; // Return empty array instead of throwing
+    }
+    return result.data || [];
+  } catch (error) {
+    console.warn('Network error fetching docentes:', error);
+    return []; // Return empty array on network errors
+  }
 }
 
 export async function actualizarDocente(id: string, data: ActualizarDocenteData): Promise<Docente> {
-  return await apiClient.put<Docente>(`/api/docentes?id=${id}`, data);
+  const result = await authService.put<Docente>(`/api/docentes?id=${id}`, data);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }
 
 export async function eliminarDocente(id: string): Promise<{ message: string }> {
-  return await apiClient.delete<{ message: string }>(`/api/docentes?id=${id}`);
+  const result = await authService.delete<{ message: string }>(`/api/docentes?id=${id}`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
 }

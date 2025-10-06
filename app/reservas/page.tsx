@@ -10,9 +10,12 @@ import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
 import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { obtenerDocentes } from "@/lib/docenteController"
 import { obtenerEquipos } from "@/lib/equipoController"
+import ProtectedRoute from "@/components/protected-route"
+import { useAuth } from "@/lib/auth-context"
 import type { ReservaEscolar, Docente } from "@/lib/types"
 
-export default function PageReservasDocentes() {
+function PageReservasDocentesContent() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [docentes, setDocentes] = useState<Docente[]>([])
@@ -32,30 +35,45 @@ export default function PageReservasDocentes() {
 
   useEffect(() => {
     const init = async () => {
-      try {
-  const [docentesData, equiposData] = await Promise.all([obtenerDocentes(), obtenerEquipos()])
-  setDocentes(docentesData)
-  setEquipos(equiposData)
+      if (!user) {
+        console.log('⚠️ User not available yet, waiting...');
+        return;
+      }
 
-        // Try to detect current user role via a /api/session endpoint (if exists)
-        // Fallback: pick the first docente as current for demo if no session endpoint.
+      try {
+        console.log('🔄 Loading data for authenticated user:', user.role, user);
+        const [docentesData, equiposData] = await Promise.all([obtenerDocentes(), obtenerEquipos()])
+        console.log('📚 Docentes loaded:', docentesData.length);
+        console.log('🔧 Equipos loaded:', equiposData.length);
+        
+        setDocentes(docentesData)
+        setEquipos(equiposData)
+
+        // Find current docente based on authenticated user
         let detected: Docente | null = null
-        try {
-          const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          const resp = await fetch(`${base}/api/auth/session`, { credentials: 'include' })
-          if (resp.ok) {
-            const data = await resp.json()
-            if (data?.user && data.user.role === 'docente') {
-              // match by nombre/apellido if the session provides that, otherwise fall back to first docente
-              const byName = docentesData.find(d => `${d.nombre} ${d.apellido}` === `${data.user.nombre} ${data.user.apellido}`)
-              detected = byName || docentesData[0] || null
-            }
+        
+        if (user.role === 'DOCENTE') {
+          console.log('👨‍🏫 Looking for docente for user:', user);
+          
+          if (user.docente) {
+            // User has docente data in their profile
+            detected = docentesData.find(d => d.id === user.docente?.id) || null;
+            console.log('🔍 Found docente by ID:', detected);
+          } else {
+            // Fallback: try to match by username or email
+            detected = docentesData.find(d => 
+              d.nombre?.toLowerCase().includes(user.username.toLowerCase()) ||
+              (user.email && d.nombre?.toLowerCase().includes(user.email.split('@')[0].toLowerCase()))
+            ) || docentesData[0] || null;
+            console.log('🔍 Found docente by fallback search:', detected);
           }
-        } catch (e) {
-          // ignore - session endpoint may not exist
+        } else if (user.role === 'ADMIN') {
+          // Admin can see all docentes, select first one for demo
+          detected = docentesData[0] || null;
+          console.log('👑 Admin user, using first docente:', detected);
         }
 
-        if (!detected && docentesData.length > 0) detected = docentesData[0]
+        console.log('✅ Final detected docente:', detected);
         setCurrentDocente(detected)
 
         if (detected) {
@@ -75,7 +93,7 @@ export default function PageReservasDocentes() {
     }
 
     init()
-  }, [])
+  }, [user])
 
   const handleCrearReserva = async (reservaPayload: Omit<ReservaEscolar, 'id' | 'fechaCreacion'>) => {
     try {
@@ -130,10 +148,21 @@ export default function PageReservasDocentes() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Acceso restringido</CardTitle>
+            <CardTitle>Configuración de Docente</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>No se encontró una sesión de docente. Contacta al administrador.</p>
+          <CardContent className="space-y-4">
+            <p>No se pudo encontrar un docente asociado a tu cuenta.</p>
+            <div className="bg-gray-50 p-4 rounded">
+              <p className="text-sm"><strong>Usuario:</strong> {user?.username}</p>
+              <p className="text-sm"><strong>Rol:</strong> {user?.role}</p>
+              <p className="text-sm"><strong>Docentes disponibles:</strong> {docentes.length}</p>
+            </div>
+            <p className="text-sm text-gray-600">
+              {user?.role === 'ADMIN' ? 
+                'Como administrador, deberías poder ver los docentes. Si no hay docentes, créalos primero.' :
+                'Contacta al administrador para asociar tu cuenta con un perfil de docente.'
+              }
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -224,4 +253,12 @@ export default function PageReservasDocentes() {
       />
     </div>
   )
+}
+
+export default function PageReservasDocentes() {
+  return (
+    <ProtectedRoute>
+      <PageReservasDocentesContent />
+    </ProtectedRoute>
+  );
 }

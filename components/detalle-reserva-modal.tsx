@@ -33,6 +33,7 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
         year: "numeric",
         month: "long",
         day: "numeric",
+        timeZone: "UTC"
       });
     }
     return null;
@@ -128,12 +129,17 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Fecha de inicio:</span>
                 <span className="font-medium">
-                  {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {(() => {
+                    const fecha = typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha;
+                    // Use UTC methods to display the date as stored, avoiding timezone interpretation
+                    return fecha.toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long", 
+                      day: "numeric",
+                      timeZone: "UTC"
+                    });
+                  })()}
                 </span>
               </div>
 

@@ -103,22 +103,48 @@ export function verificarDisponibilidadModulos(
 ): { disponible: boolean; modulosOcupados: number[] } {
   const modulosOcupados: number[] = []
 
+  console.log('[verificarDisponibilidadModulos] Input:', {
+    equipoId,
+    fecha: fecha.toISOString(),
+    modulosDeseados,
+    reservasExistentes: reservasExistentes.length
+  });
+
   reservasExistentes.forEach((reserva) => {
+    const reservaFecha = typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha;
+    const fechaComparar = fecha.toISOString().split('T')[0];
+    const reservaFechaComparar = reservaFecha.toISOString().split('T')[0];
+    
+    console.log('[verificarDisponibilidadModulos] Comparando:', {
+      reservaId: reserva.id,
+      reservaEquipoId: reserva.equipoId,
+      equipoIdBuscado: equipoId,
+      equipoMatch: reserva.equipoId === equipoId,
+      reservaFecha: reservaFechaComparar,
+      fechaBuscada: fechaComparar,
+      fechaMatch: reservaFechaComparar === fechaComparar,
+      estado: reserva.estado,
+      modulos: reserva.modulos
+    });
+    
     if (
       reserva.equipoId === equipoId &&
-      (typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toDateString() === fecha.toDateString() &&
+      reservaFechaComparar === fechaComparar &&
       reserva.estado !== "cancelada"
     ) {
+      console.log('[verificarDisponibilidadModulos] MATCH - Agregando módulos ocupados:', reserva.modulos);
       modulosOcupados.push(...reserva.modulos)
     }
   })
 
   const conflictos = modulosDeseados.filter((modulo) => modulosOcupados.includes(modulo))
-
-  return {
+  const resultado = {
     disponible: conflictos.length === 0,
     modulosOcupados: [...new Set(modulosOcupados)],
   }
+
+  console.log('[verificarDisponibilidadModulos] Resultado:', resultado);
+  return resultado
 }
 
 export function obtenerModulosDisponibles(

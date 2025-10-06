@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import ProtectedRoute from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,11 +39,14 @@ import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { EditarReservaModal } from "@/components/editar-reserva-modal"
 import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
 import { HeaderProfesional } from "@/components/header-profesional";
+import UserNavigation from "@/components/user-navigation";
 import { useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
 
-export default function ReservasEscolaresPage() {
+function ReservasEscolaresPageContent() {
+  const { user, isAdmin } = useAuth()
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
   const [filtroEquipo, setFiltroEquipo] = useState<string>("todos")
@@ -72,9 +78,17 @@ export default function ReservasEscolaresPage() {
         setReservas(reservasData);
         setEquipos(equiposData);
         setDocentes(docentesData);
+        
+        // Show helpful message if data is empty
+        if (reservasData.length === 0 && equiposData.length > 0 && docentesData.length > 0) {
+          console.info('✅ Backend connected successfully. Database has docentes and equipos but no reservas yet.');
+        } else if (equiposData.length === 0 || docentesData.length === 0) {
+          console.warn('⚠️ Some required data is missing. Please ensure docentes and equipos are created in the system.');
+        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
-        alert('Error al cargar los datos iniciales. Asegúrate de que el backend esté en ejecución.');
+        // Don't show alert anymore since controllers handle errors gracefully
+        console.warn('Some data could not be loaded. The system will work with available data.');
       }
     };
 
@@ -374,8 +388,20 @@ export default function ReservasEscolaresPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <HeaderProfesional />
+      {/* Header with Authentication */}
+      <div className="border-b bg-white">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Sistema de Reservas</h1>
+              <p className="text-gray-600">
+                {isAdmin() ? 'Panel de administración' : 'Panel de docente'}
+              </p>
+            </div>
+            <UserNavigation />
+          </div>
+        </div>
+      </div>
 
       {/* Sección informativa para el administrador */}
       <div className="container mx-auto px-6 pt-6 pb-2">
@@ -766,4 +792,12 @@ export default function ReservasEscolaresPage() {
       />
     </div>
   )
+}
+
+export default function ReservasEscolaresPage() {
+  return (
+    <ProtectedRoute requireAdmin={true}>
+      <ReservasEscolaresPageContent />
+    </ProtectedRoute>
+  );
 }

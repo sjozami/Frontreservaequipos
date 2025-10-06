@@ -68,7 +68,7 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span>
-                  <strong>Fecha:</strong> {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES")}
+                  <strong>Fecha:</strong> {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES", { timeZone: "UTC" })}
                 </span>
               </div>
 

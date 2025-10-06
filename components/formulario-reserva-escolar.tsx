@@ -241,7 +241,7 @@ export function FormularioReservaEscolar({
           updatedAt: now,
         };
 
-        console.log("[v0] Creando reserva individual");
+        console.log("[v0] Creando reserva individual - Fecha seleccionada:", fecha?.toISOString());
         await onCrearReserva(nuevaReserva);
       }
       
@@ -306,6 +306,17 @@ export function FormularioReservaEscolar({
     }
 
     const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasParaValidacion)
+    
+    // Debug log
+    if (!disponibilidad.disponible) {
+      console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado:`, {
+        equipoId,
+        fecha: fecha.toISOString(),
+        reservasParaValidacion: reservasParaValidacion.length,
+        modulosOcupados: disponibilidad.modulosOcupados
+      });
+    }
+    
     return {
       disponible: disponibilidad.disponible,
       razon: disponibilidad.disponible ? undefined : "Ocupado",
@@ -330,11 +341,13 @@ export function FormularioReservaEscolar({
           const desde = startOfDay(fecha)
           const hasta = endOfDay(fechaHasta)
           const resultados = await obtenerReservas({ equipoId, desde, hasta })
+          console.log(`[fetchReservasParaValidacion] Recurrente - Equipo: ${equipoId}, Fecha: ${fecha.toISOString()}, Reservas encontradas: ${resultados.length}`);
           setReservasParaValidacion(resultados)
         } else if (fecha) {
           const desde = startOfDay(fecha)
           const hasta = endOfDay(fecha)
           const resultados = await obtenerReservas({ equipoId, desde, hasta })
+          console.log(`[fetchReservasParaValidacion] Individual - Equipo: ${equipoId}, Fecha: ${fecha.toISOString()}, Reservas encontradas: ${resultados.length}`);
           setReservasParaValidacion(resultados)
         } else {
           setReservasParaValidacion(reservasExistentes || [])
@@ -353,7 +366,7 @@ export function FormularioReservaEscolar({
     } else {
       setFechasGeneradas([])
     }
-  }, [fecha, fechaHasta, esRecurrente, frecuencia])
+  }, [fecha, fechaHasta, esRecurrente, frecuencia, equipoId])
 
   return (
     <div className="space-y-6">
@@ -437,7 +450,15 @@ export function FormularioReservaEscolar({
                       mode="single"
                       selected={fecha}
                       onSelect={(date) => {
-                        setFecha(date)
+                        console.log("[Calendar] Fecha seleccionada del calendario:", date, "ISO:", date?.toISOString());
+                        // Normalize to local midnight to avoid timezone issues
+                        if (date) {
+                          const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                          console.log("[Calendar] Fecha normalizada a medianoche local:", localMidnight, "ISO:", localMidnight.toISOString());
+                          setFecha(localMidnight);
+                        } else {
+                          setFecha(date);
+                        }
                       }}
                       disabled={(date) => {
                         // disable past dates
@@ -639,14 +660,14 @@ export function FormularioReservaEscolar({
   return (
     <div
       key={modulo.numero}
-      className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+      className={`border-2 rounded-lg p-3 transition-colors ${
         seleccionado
-          ? "border-primary bg-primary/10"
+          ? "border-primary bg-primary/10 cursor-pointer"
           : disponible
-            ? "border-border hover:border-primary/50"
+            ? "border-border hover:border-primary/50 cursor-pointer"
             : yaPaso
-              ? "border-amber-300 bg-amber-50 cursor-not-allowed"
-              : "border-destructive/50 bg-destructive/5 cursor-not-allowed"
+              ? "border-amber-400 bg-amber-100 cursor-not-allowed opacity-70"
+              : "border-red-500 bg-red-100 cursor-not-allowed opacity-80"
       }`}
       onClick={() => {
         if (disponible && equipoId && fecha) {
@@ -661,16 +682,20 @@ export function FormularioReservaEscolar({
           onCheckedChange={() => handleSeleccionarModulo(modulo.numero, !seleccionado)}
         />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm">{modulo.nombre}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className={`font-medium text-sm ${!disponible && !yaPaso ? "text-red-700" : ""}`}>
+            {modulo.nombre}
+          </p>
+          <p className={`text-xs ${!disponible && !yaPaso ? "text-red-600" : "text-muted-foreground"}`}>
             {modulo.horaInicio} - {modulo.horaFin}
           </p>
         </div>
       </div>
       {!disponible && equipoId && fecha && (
         <div className="flex items-center mt-1">
-          <AlertCircle className={`w-3 h-3 mr-1 ${yaPaso ? "text-amber-600" : "text-destructive"}`} />
-          <span className={`text-xs ${yaPaso ? "text-amber-600" : "text-destructive"}`}>{razon}</span>
+          <AlertCircle className={`w-3 h-3 mr-1 ${yaPaso ? "text-amber-600" : "text-red-600"}`} />
+          <span className={`text-xs font-medium ${yaPaso ? "text-amber-600" : "text-red-600"}`}>
+            {yaPaso ? razon : "OCUPADO"}
+          </span>
         </div>
       )}
     </div>

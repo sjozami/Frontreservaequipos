@@ -101,7 +101,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                     <td className="p-2 align-middle" colSpan={1}>
                       <div className="flex items-center gap-2">
                         <button onClick={() => toggleGroup(gid)} className="text-sm font-medium">{expandedGroups[gid] ? '▾' : '▸'}</button>
-                        <div className="text-sm font-medium">{(typeof primera.fecha === 'string' ? new Date(primera.fecha) : primera.fecha).toLocaleDateString('es-ES')}</div>
+                        <div className="text-sm font-medium">{(typeof primera.fecha === 'string' ? new Date(primera.fecha) : primera.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
                         <div className="text-xs text-muted-foreground"> • {reservasGrupo[0].frecuencia ?? ''} • {total} fechas</div>
                       </div>
                     </td>
@@ -127,7 +127,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                     return (
                       <tr key={r.id} className="border-t bg-white">
                         <td className="p-2 align-middle">
-                          <div className="text-sm">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES')}</div>
+                          <div className="text-sm">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
                           <div className="text-xs text-muted-foreground">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
                         </td>
                         <td className="p-2">{equipo?.nombre ?? '—'}</td>
@@ -158,7 +158,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
               return (
                 <tr key={r.id} className="border-t">
                   <td className="p-2 align-middle">
-                    <div className="text-sm font-medium">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES')}</div>
+                    <div className="text-sm font-medium">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
                     <div className="text-xs text-muted-foreground">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
                   </td>
                   <td className="p-2 align-middle">
