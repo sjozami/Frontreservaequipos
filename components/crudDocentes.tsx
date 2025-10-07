@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, GraduationCap, Pencil, Trash } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Plus, GraduationCap, Pencil, Trash, User } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+
+interface Usuario {
+  id: string
+  username: string
+  email: string
+  role: 'DOCENTE' | 'ADMIN'
+}
 
 interface Docente {
   id: string
@@ -15,18 +24,27 @@ interface Docente {
   curso: string
   materia: string
   observaciones?: string
+  usuario?: Usuario | null
 }
 
 export function CrudDocentes() {
+  const { isAdmin } = useAuth()
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [open, setOpen] = useState(false)
   const [editando, setEditando] = useState<Docente | null>(null)
+  const [crearUsuario, setCrearUsuario] = useState(false)
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
     curso: "",
     materia: "",
     observaciones: "",
+    usuario: {
+      username: "",
+      email: "",
+      password: "",
+      role: "DOCENTE" as "DOCENTE" | "ADMIN"
+    }
   })
 
   // --- Cargar docentes desde backend
@@ -46,28 +64,49 @@ export function CrudDocentes() {
   }, [])
 
   const resetForm = () => {
-    setFormData({ nombre: "", apellido: "", curso: "", materia: "", observaciones: "" })
+    setFormData({ 
+      nombre: "", 
+      apellido: "", 
+      curso: "", 
+      materia: "", 
+      observaciones: "",
+      usuario: {
+        username: "",
+        email: "",
+        password: "",
+        role: "DOCENTE"
+      }
+    })
     setEditando(null)
+    setCrearUsuario(false)
   }
 
   const handleGuardar = async () => {
     try {
       const { crearDocente, actualizarDocente } = await import("@/lib/docenteController");
       
+      const docenteData = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        curso: formData.curso,
+        materia: formData.materia,
+      };
+
+      // Si es admin y quiere crear/editar usuario, incluir datos de usuario
+      const dataConUsuario = (isAdmin() && crearUsuario) ? {
+        ...docenteData,
+        usuario: {
+          username: formData.usuario.username,
+          email: formData.usuario.email,
+          password: formData.usuario.password,
+          role: formData.usuario.role
+        }
+      } : docenteData;
+
       if (editando) {
-        await actualizarDocente(editando.id, {
-          nombre: formData.nombre,
-          apellido: formData.apellido,
-          curso: formData.curso,
-          materia: formData.materia,
-        });
+        await actualizarDocente(editando.id, dataConUsuario);
       } else {
-        await crearDocente({
-          nombre: formData.nombre,
-          apellido: formData.apellido,
-          curso: formData.curso,
-          materia: formData.materia,
-        });
+        await crearDocente(dataConUsuario);
       }
       
       await cargarDocentes()
@@ -87,7 +126,14 @@ export function CrudDocentes() {
       curso: docente.curso,
       materia: docente.materia,
       observaciones: docente.observaciones ?? "",
+      usuario: {
+        username: docente.usuario?.username ?? "",
+        email: docente.usuario?.email ?? "",
+        password: "", // No mostrar la contraseña actual
+        role: docente.usuario?.role ?? "DOCENTE"
+      }
     })
+    setCrearUsuario(!!docente.usuario) // Si ya tiene usuario, habilitar la edición
     setOpen(true)
   }
 
@@ -122,6 +168,7 @@ export function CrudDocentes() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Datos del docente */}
               <div>
                 <Label>Nombre</Label>
                 <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
@@ -142,6 +189,77 @@ export function CrudDocentes() {
                 <Label>Observaciones</Label>
                 <Textarea value={formData.observaciones} onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} />
               </div>
+
+              {/* Campos de usuario - solo para administradores */}
+              {isAdmin() && (
+                <>
+                  <div className="flex items-center space-x-2 pt-4 border-t">
+                    <Checkbox 
+                      id="crear-usuario" 
+                      checked={crearUsuario} 
+                      onCheckedChange={(checked) => setCrearUsuario(!!checked)}
+                    />
+                    <Label htmlFor="crear-usuario" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {editando && editando.usuario ? "Editar usuario asociado" : "Crear usuario para este docente"}
+                    </Label>
+                  </div>
+
+                  {crearUsuario && (
+                    <div className="space-y-3 border-l-2 border-blue-200 pl-4">
+                      <div>
+                        <Label>Nombre de usuario</Label>
+                        <Input 
+                          value={formData.usuario.username} 
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            usuario: { ...formData.usuario, username: e.target.value }
+                          })} 
+                          placeholder="Ej: jperez"
+                        />
+                      </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input 
+                          type="email"
+                          value={formData.usuario.email} 
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            usuario: { ...formData.usuario, email: e.target.value }
+                          })} 
+                          placeholder="Ej: juan.perez@escuela.edu"
+                        />
+                      </div>
+                      <div>
+                        <Label>Contraseña {editando && editando.usuario && "(dejar vacío para no cambiar)"}</Label>
+                        <Input 
+                          type="password"
+                          value={formData.usuario.password} 
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            usuario: { ...formData.usuario, password: e.target.value }
+                          })} 
+                          placeholder={editando && editando.usuario ? "Nueva contraseña (opcional)" : "Contraseña"}
+                        />
+                      </div>
+                      <div>
+                        <Label>Rol</Label>
+                        <select 
+                          value={formData.usuario.role}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            usuario: { ...formData.usuario, role: e.target.value as "DOCENTE" | "ADMIN" }
+                          })}
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                          <option value="DOCENTE">Docente</option>
+                          <option value="ADMIN">Administrador</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
@@ -156,9 +274,22 @@ export function CrudDocentes() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {docentes.map((docente) => (
           <div key={docente.id} className="border rounded-lg p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="font-semibold">{docente.nombre} {docente.apellido}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{docente.nombre} {docente.apellido}</p>
+                {docente.usuario && (
+                  <div className="flex items-center gap-1">
+                    <User className="w-3 h-3 text-blue-500" />
+                    <span className="text-xs text-blue-500">{docente.usuario.role}</span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{docente.curso} • {docente.materia}</p>
+              {docente.usuario && isAdmin() && (
+                <p className="text-xs text-muted-foreground">
+                  Usuario: {docente.usuario.username} ({docente.usuario.email})
+                </p>
+              )}
               {docente.observaciones && <p className="text-xs text-muted-foreground italic mt-1">"{docente.observaciones}"</p>}
             </div>
             <div className="flex gap-2">
