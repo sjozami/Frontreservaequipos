@@ -117,13 +117,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         credentials: 'include',
       });
 
-      const data = await response.json();
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (err) {
+        // body may be empty
+        data = null;
+      }
 
-      if (response.ok && data.accessToken) {
+      if (response.ok && data && data.accessToken) {
         saveAuthData(data.accessToken, data.refreshToken, data.user);
         return true;
       } else {
-        console.error('Login failed:', data.message || 'Unknown error');
+        // Use warn for expected auth failures to avoid Next.js client error overlay
+        console.warn('Login failed', {
+          status: response.status,
+          statusText: response.statusText,
+          body: data,
+        });
         return false;
       }
     } catch (error) {

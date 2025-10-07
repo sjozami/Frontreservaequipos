@@ -61,9 +61,25 @@ export default function DisplayPage() {
       fetchData()
     }, [])
 
+    // Helper: parse reservation fecha coming from backend (ISO string at midnight UTC)
+    // We treat these as date-only values (YYYY-MM-DD) so they map to the intended local day
+    const parseReservaFecha = (fecha: string | Date): Date => {
+      if (fecha instanceof Date) return fecha
+      try {
+        // fecha expected like: "2025-10-07T00:00:00.000Z"
+        const datePart = String(fecha).split('T')[0] // "2025-10-07"
+        const [y, m, d] = datePart.split('-').map((n) => parseInt(n, 10))
+        // Create a local Date for that Y-M-D (midnight local time)
+        return new Date(y, (m || 1) - 1, d || 1)
+      } catch (e) {
+        // Fallback to JS parsing
+        return new Date(fecha)
+      }
+    }
+
     const hoy = new Date()
     const reservasHoy = reservas.filter((reserva) => {
-      const fechaReserva = typeof reserva.fecha === "string" ? new Date(reserva.fecha) : reserva.fecha
+      const fechaReserva = parseReservaFecha(reserva.fecha)
       return fechaReserva.toDateString() === hoy.toDateString()
     })
 
@@ -77,7 +93,7 @@ export default function DisplayPage() {
     const targetDate = fechaProxima ?? hoy
 
     const reservasTargetDate = reservas.filter((reserva) => {
-      const fechaReserva = typeof reserva.fecha === "string" ? new Date(reserva.fecha) : reserva.fecha
+      const fechaReserva = parseReservaFecha(reserva.fecha)
       return fechaReserva.toDateString() === targetDate.toDateString()
     })
 

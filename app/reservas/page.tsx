@@ -11,6 +11,7 @@ import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { obtenerDocentes } from "@/lib/docenteController"
 import { obtenerEquipos } from "@/lib/equipoController"
 import ProtectedRoute from "@/components/protected-route"
+import UserNavigation from "@/components/user-navigation"
 import { useAuth } from "@/lib/auth-context"
 import type { ReservaEscolar, Docente } from "@/lib/types"
 
@@ -146,6 +147,11 @@ function PageReservasDocentesContent() {
   if (!currentDocente) {
     return (
       <div className="space-y-4">
+        {/* Header con navegación del usuario */}
+        <div className="flex items-center justify-between py-4 border-b">
+          <h1 className="text-3xl font-bold">Sistema de Reservas</h1>
+          <UserNavigation />
+        </div>
         <Card>
           <CardHeader>
             <CardTitle>Configuración de Docente</CardTitle>
@@ -171,6 +177,11 @@ function PageReservasDocentesContent() {
 
   return (
     <div className="space-y-6">
+      {/* Header con navegación del usuario */}
+      <div className="flex items-center justify-between py-4 border-b">
+        <h1 className="text-3xl font-bold">Sistema de Reservas</h1>
+        <UserNavigation />
+      </div>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Reservas — Docente: {currentDocente.nombre} {currentDocente.apellido}</h2>
         <div>
