@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormularioReservaEscolar } from "@/components/formulario-reserva-escolar"
 import { obtenerReservas, crearReserva } from "@/lib/reservaController"
-import { cancelarReserva } from "@/lib/reservaController"
+import { eliminarReserva } from "@/lib/reservaController"
 import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
 import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { obtenerDocentes } from "@/lib/docenteController"
@@ -104,7 +104,7 @@ export default function PageReservasDocentes() {
 
   const handleConfirmarCancelar = async (r: ReservaEscolar) => {
     try {
-      await cancelarReserva(r.id)
+      await eliminarReserva(r.id)
       // refresh
       if (currentDocente) {
         const desde = new Date()

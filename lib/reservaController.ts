@@ -121,8 +121,20 @@ export async function cancelarReserva(id: string): Promise<ReservaEscolar> {
   return result.data!;
 }
 
+export async function eliminarReserva(id: string): Promise<{ mensaje: string }> {
+  const result = await authService.delete<{ mensaje: string }>(`/api/reservas/${id}?eliminar=true`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
+}
+
 export async function cancelarSerie(grupoId: string): Promise<{ updated: number }> {
   const result = await authService.delete<{ updated: number }>(`/api/reservas/serie/${grupoId}`);
+  if (result.error) throw new Error(result.error);
+  return result.data!;
+}
+
+export async function eliminarSerie(grupoId: string): Promise<{ mensaje: string }> {
+  const result = await authService.delete<{ mensaje: string }>(`/api/reservas/serie/${grupoId}?eliminar=true`);
   if (result.error) throw new Error(result.error);
   return result.data!;
 }

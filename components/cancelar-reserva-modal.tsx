@@ -35,10 +35,10 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="w-5 h-5" />
-            Cancelar Reserva
+            Eliminar Reserva
           </DialogTitle>
           <DialogDescription>
-            ¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer.
+            ¿Estás seguro de que deseas eliminar esta reserva? Esta acción eliminará completamente el registro y no se puede deshacer.
           </DialogDescription>
         </DialogHeader>
 
@@ -88,9 +88,9 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
               <div className="text-sm">
                 <p className="font-medium text-destructive">Importante:</p>
                 <p className="text-destructive/80">
-                  Al cancelar esta reserva, el equipo quedará disponible para otros docentes en este horario.
+                  Al eliminar esta reserva, el registro será completamente borrado de la base de datos y el equipo quedará disponible para otros docentes en este horario.
                   {reserva.esRecurrente &&
-                    " Esta acción cancelará solo esta reserva individual, no toda la serie recurrente."}
+                    " Esta acción eliminará solo esta reserva individual, no toda la serie recurrente."}
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
             No, mantener reserva
           </Button>
           <Button variant="destructive" onClick={handleConfirmar}>
-            Sí, cancelar reserva
+            Sí, eliminar reserva
           </Button>
         </div>
       </DialogContent>

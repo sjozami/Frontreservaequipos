@@ -257,17 +257,17 @@ function ReservasEscolaresPageContent() {
   }
 
   const handleConfirmarCancelacion = async (reserva: ReservaEscolar) => {
-    console.log('🚮 Attempting to cancel reservation:', reserva.id);
+    console.log('🚮 Attempting to delete reservation:', reserva.id);
     try {
-      // Use the controller function to cancel the reservation
-      const { cancelarReserva } = await import('@/lib/reservaController');
+      // Use the controller function to delete the reservation
+      const { eliminarReserva } = await import('@/lib/reservaController');
       
-      console.log('📞 Calling cancelarReserva with ID:', reserva.id);
-      const reservaCancelada = await cancelarReserva(reserva.id);
-      console.log('✅ Reservation cancelled successfully:', reservaCancelada);
+      console.log('📞 Calling eliminarReserva with ID:', reserva.id);
+      const resultado = await eliminarReserva(reserva.id);
+      console.log('✅ Reservation deleted successfully:', resultado);
       
-      // Update local state with the cancelled reservation
-      setReservas(reservas.map((r) => (r.id === reserva.id ? reservaCancelada : r)))
+      // Remove the reservation from local state since it was deleted
+      setReservas(reservas.filter((r) => r.id !== reserva.id))
       setModalCancelar(false)
       setReservaSeleccionada(null)
       
