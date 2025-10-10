@@ -8,13 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, ArrowLeft } from "lucide-react"
 import { AgrupacionReservas } from "@/components/agrupacion-reservas"
 import { DetalleAgrupacion } from "@/components/detalle-agrupacion"
-import { reservasMock } from "@/lib/mock-data"
 import { agruparReservas } from "@/lib/reservas-utils"
 import type { AgrupacionReserva, ReservaIndividual } from "@/lib/types"
 import Link from "next/link"
 
 export default function AgrupacionesPage() {
-  const [agrupaciones, setAgrupaciones] = useState<AgrupacionReserva[]>(() => agruparReservas(reservasMock))
+  const [agrupaciones, setAgrupaciones] = useState<AgrupacionReserva[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
 
@@ -27,8 +26,12 @@ export default function AgrupacionesPage() {
     setAgrupaciones([...agrupaciones, agrupacion])
   }
 
-  const handleEditarAgrupacion = (id: string, cambios: Partial<AgrupacionReserva>) => {
+  const handleEditarAgrupacionPorId = (id: string, cambios: Partial<AgrupacionReserva>) => {
     setAgrupaciones(agrupaciones.map((agrup) => (agrup.id === id ? { ...agrup, ...cambios } : agrup)))
+  }
+
+  const handleEditarAgrupacion = (agrupacionEditada: AgrupacionReserva) => {
+    setAgrupaciones(agrupaciones.map((agrup) => (agrup.id === agrupacionEditada.id ? agrupacionEditada : agrup)))
   }
 
   const handleEliminarAgrupacion = (id: string) => {
@@ -107,9 +110,9 @@ export default function AgrupacionesPage() {
         {/* Sistema de agrupación */}
         <div className="mb-8">
           <AgrupacionReservas
-            reservas={reservasMock}
+            reservas={[]}
             onCrearAgrupacion={handleCrearAgrupacion}
-            onEditarAgrupacion={handleEditarAgrupacion}
+            onEditarAgrupacion={handleEditarAgrupacionPorId}
             onEliminarAgrupacion={handleEliminarAgrupacion}
           />
         </div>

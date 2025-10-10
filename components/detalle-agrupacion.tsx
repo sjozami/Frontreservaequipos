@@ -16,7 +16,6 @@ import {
 import { Edit, Trash2, Eye } from "lucide-react"
 import type { AgrupacionReserva, ReservaIndividual } from "@/lib/types"
 import { calcularEstadisticasAgrupacion } from "@/lib/reservas-utils"
-import { modulosMock } from "@/lib/mock-data"
 
 interface DetalleAgrupacionProps {
   agrupacion: AgrupacionReserva
@@ -30,7 +29,7 @@ export function DetalleAgrupacion({ agrupacion, onEditar, onEliminar, onEditarRe
   const stats = calcularEstadisticasAgrupacion(agrupacion)
 
   const getModuloNombre = (moduloId: string) => {
-    return modulosMock.find((m) => m.id === moduloId)?.nombre || "Módulo desconocido"
+    return `Módulo ${moduloId}`
   }
 
   const getEstadoBadgeVariant = (estado: string) => {

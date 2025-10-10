@@ -107,6 +107,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const loginUrl = `${base}/api/auth/login`;
       console.log('🔐 Attempting login to:', loginUrl);
       console.log('🌐 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+      console.log('🌐 Full login request config:', {
+        url: loginUrl,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: { username, password: '***' },
+        credentials: 'include'
+      });
       
       const response = await fetch(loginUrl, {
         method: 'POST',
@@ -141,9 +148,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('💥 Login fetch error:', error);
       console.error('💥 Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        loginUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`
+        name: error instanceof Error ? error.name : 'Unknown',
+        cause: error instanceof Error ? error.cause : undefined,
+        loginUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`,
+        errorType: typeof error,
+        isNetworkError: error instanceof TypeError && error.message.includes('fetch')
       });
+      
+      // Check if it's a network/CORS error
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('🚨 NETWORK ERROR: This is likely a CORS or connectivity issue');
+        console.error('🔧 Solutions:');
+        console.error('   1. Check if backend is running on:', process.env.NEXT_PUBLIC_API_URL);
+        console.error('   2. Check CORS configuration in backend');
+        console.error('   3. Try accessing backend directly:', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`);
+      }
+      
       return false;
     } finally {
       setIsLoading(false);

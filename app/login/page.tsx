@@ -158,17 +158,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Credentials help for demo */}
-        <Card className="border border-blue-200 bg-blue-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-blue-800">Credenciales de Prueba</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-blue-700 space-y-1">
-            <div><strong>Admin:</strong> admin / admin123</div>
-            <div><strong>Docente:</strong> ana.garcia / docente123</div>
-            <div><strong>Docente:</strong> luis.perez / docente123</div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );
