@@ -191,6 +191,14 @@ function PageReservasDocentesContent() {
 
       {showForm && (
         <div>
+          {user?.role === 'DOCENTE' && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Modo Docente:</strong> Los módulos ocupados se verifican automáticamente con el servidor.
+                Los módulos en rojo están ocupados por otras reservas.
+              </p>
+            </div>
+          )}
           <FormularioReservaEscolar
             onCrearReserva={(r) => handleCrearReserva(r)}
             onCancelar={() => setShowForm(false)}

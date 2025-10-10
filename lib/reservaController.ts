@@ -1,5 +1,5 @@
 import authService from './auth-service';
-import type { ReservaEscolar } from './types';
+import type { ReservaEscolar, ModuloOcupado } from './types';
 
 export interface CrearReservaData {
   fecha: Date;
@@ -125,4 +125,34 @@ export async function cancelarSerie(grupoId: string): Promise<{ updated: number 
   const result = await authService.delete<{ updated: number }>(`/api/reservas/serie/${grupoId}`);
   if (result.error) throw new Error(result.error);
   return result.data!;
+}
+
+export async function obtenerModulosOcupados(fecha?: Date, equipoId?: string): Promise<ModuloOcupado[]> {
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (fecha) {
+      // Send date as YYYY-MM-DD format to match backend expectation
+      const dateStr = fecha.toISOString().split('T')[0];
+      searchParams.append('fecha', dateStr);
+    }
+    if (equipoId) searchParams.append('equipoId', equipoId);
+    
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/api/reservas/ocupadas?${queryString}` : '/api/reservas/ocupadas';
+    
+    console.log('[obtenerModulosOcupados] Fetching from endpoint:', endpoint);
+    
+    const result = await authService.get<ModuloOcupado[]>(endpoint);
+    if (result.error) {
+      console.warn('Error fetching módulos ocupados:', result.error);
+      return []; // Return empty array instead of throwing
+    }
+    
+    console.log('[obtenerModulosOcupados] Backend response:', result.data);
+    return result.data || [];
+  } catch (error) {
+    console.warn('Network error fetching módulos ocupados:', error);
+    return []; // Return empty array on network errors
+  }
 }

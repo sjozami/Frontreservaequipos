@@ -16,6 +16,8 @@ import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
 import { MODULOS_HORARIOS } from "@/lib/constants"
 import { verificarDisponibilidadModulos, formatearHorarioModulos } from "@/lib/reservas-utils"
+import { useModulosOcupados } from "@/hooks/use-reservas"
+import { useAuth } from "@/lib/auth-context"
 
 
 const obtenerModuloActual = (): number => {
@@ -61,6 +63,7 @@ export function FormularioReservaEscolar({
   currentDocente,
   lockDocente = false,
 }: FormularioReservaEscolarProps) {
+  const { isDocente } = useAuth()
   const [equipos, setEquipos] = useState<EquipoEscolar[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [equipoId, setEquipoId] = useState("")
@@ -68,13 +71,19 @@ export function FormularioReservaEscolar({
   const [fecha, setFecha] = useState<Date>()
   const [modulosSeleccionados, setModulosSeleccionados] = useState<number[]>([])
   const [observaciones, setObservaciones] = useState("")
-  const [estado, setEstado] = useState<"pendiente" | "confirmada">("pendiente")
+  const [estado, setEstado] = useState<"pendiente" | "confirmada">("confirmada")
   const [esRecurrente, setEsRecurrente] = useState(false)
   const [frecuencia, setFrecuencia] = useState<"diaria" | "semanal" | "mensual">("semanal")
   const [fechaHasta, setFechaHasta] = useState<Date>()
   const [fechasGeneradas, setFechasGeneradas] = useState<Date[]>([])
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [reservasParaValidacion, setReservasParaValidacion] = useState<ReservaEscolar[]>(reservasExistentes)
+
+  // Hook para obtener módulos ocupados desde el backend (solo para docentes)
+  const { isModuloOcupado, loading: loadingModulosOcupados } = useModulosOcupados(
+    isDocente() ? fecha : undefined, 
+    isDocente() ? equipoId : undefined
+  )
 
   const generarFechasRecurrentes = (fechaInicio: Date, frecuencia: string, fechaFin: Date): Date[] => {
     const fechas: Date[] = []
@@ -305,15 +314,26 @@ export function FormularioReservaEscolar({
       return { disponible: false, razon: "Ya pasó" }
     }
 
+    // For docentes: check backend occupied modules first (real-time data)
+    if (isDocente()) {
+      const ocupadoEnBackend = isModuloOcupado(equipoId, fecha, modulo)
+      if (ocupadoEnBackend) {
+        console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado en backend para docente`);
+        return { disponible: false, razon: "Ocupado" }
+      }
+    }
+
+    // Then check local reservations for validation
     const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasParaValidacion)
     
     // Debug log
     if (!disponibilidad.disponible) {
-      console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado:`, {
+      console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado localmente:`, {
         equipoId,
         fecha: fecha.toISOString(),
         reservasParaValidacion: reservasParaValidacion.length,
-        modulosOcupados: disponibilidad.modulosOcupados
+        modulosOcupados: disponibilidad.modulosOcupados,
+        isDocente: isDocente()
       });
     }
     
@@ -604,9 +624,22 @@ export function FormularioReservaEscolar({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Módulos Horarios</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Módulos Horarios
+                {isDocente() && loadingModulosOcupados && (
+                  <div className="flex items-center gap-1 text-blue-600">
+                    <Clock className="h-4 w-4 animate-spin" />
+                    <span className="text-xs">Verificando disponibilidad...</span>
+                  </div>
+                )}
+              </CardTitle>
               <CardDescription>
                 Selecciona los módulos de 40 minutos (8:00 - 18:00) • {modulosSeleccionados.length} seleccionados
+                {isDocente() && equipoId && fecha && (
+                  <span className="block text-blue-600 mt-1">
+                    ℹ️ Los módulos ocupados se muestran automáticamente desde el servidor
+                  </span>
+                )}
                 {fecha && isToday(fecha) && (
                   <span className="block text-amber-600 mt-1">
                     ⚠️ Solo se pueden reservar módulos desde el actual en adelante

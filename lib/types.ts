@@ -136,6 +136,15 @@ export interface DisponibilidadModulo {
   reservadoPor?: string // ID de la reserva que lo ocupa
 }
 
+export interface ModuloOcupado {
+  id: string
+  fecha: string // ISO date from backend like "2025-10-07T00:00:00.000Z"
+  modulos: number[] // Array of occupied module numbers
+  equipoId: string
+  estado: string
+  docenteNombre?: string
+}
+
 export interface AgrupacionReservaEscolar {
   id: string
   nombre: string
