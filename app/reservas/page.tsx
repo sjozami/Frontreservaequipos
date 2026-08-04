@@ -12,6 +12,7 @@ import { EditarReservaModal } from "@/components/editar-reserva-modal"
 import { obtenerDocentes } from "@/lib/docenteController"
 import { obtenerEquipos } from "@/lib/equipoController"
 import { formatearHorarioModulos } from "@/lib/reservas-utils"
+import { formatearFechaLarga } from "@/lib/fechas"
 import ProtectedRoute from "@/components/protected-route"
 import UserNavigation from "@/components/user-navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -250,8 +251,12 @@ function PageReservasDocentesContent() {
                             ? `${res.docente.nombre} ${res.docente.apellido}`
                             : `${currentDocente.nombre} ${currentDocente.apellido}`}
                         </div>
-                        <div className="text-sm text-muted-foreground">Equipo: {res.equipo?.nombre ?? res.equipoId}</div>
-                        <div className="text-xs text-muted-foreground">Fecha: {fechaObj.toLocaleDateString()}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Equipo: {res.equipo?.nombre ?? equipos.find((e) => e.id === res.equipoId)?.nombre ?? res.equipoId}
+                        </div>
+                        <div className="text-xs text-muted-foreground first-letter:uppercase">
+                          {formatearFechaLarga(res.fecha)}
+                        </div>
                         <div className="mt-2 text-sm">
                           Horario: {res.modulos?.length ? formatearHorarioModulos(res.modulos) : "—"}
                         </div>

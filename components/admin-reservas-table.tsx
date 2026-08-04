@@ -6,6 +6,7 @@ import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatearHorarioModulos } from "@/lib/reservas-utils"
+import { formatearFechaCorta, formatearDiaSemana } from "@/lib/fechas"
 
 interface Props {
   reservas: ReservaEscolar[]
@@ -123,7 +124,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                     <td className="p-2 align-middle" colSpan={1}>
                       <div className="flex items-center gap-2">
                         <button onClick={() => toggleGroup(gid)} className="text-sm font-medium">{expandedGroups[gid] ? '▾' : '▸'}</button>
-                        <div className="text-sm font-medium">{(typeof primera.fecha === 'string' ? new Date(primera.fecha) : primera.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
+                        <div className="text-sm font-medium tabular-nums">{formatearFechaCorta(primera.fecha)}</div>
                         <div className="text-xs text-muted-foreground"> • {reservasGrupo[0].frecuencia ?? ''} • {total} fechas</div>
                       </div>
                     </td>
@@ -149,8 +150,8 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                     return (
                       <tr key={r.id} className="border-t bg-white">
                         <td className="p-2 align-middle">
-                          <div className="text-sm">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
-                          <div className="text-xs text-muted-foreground">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="text-sm tabular-nums">{formatearFechaCorta(r.fecha)}</div>
+                          <div className="text-xs text-muted-foreground first-letter:uppercase">{formatearDiaSemana(r.fecha)}</div>
                         </td>
                         <td className="p-2">{equipo?.nombre ?? '—'}</td>
                         <td className="p-2">{docente ? `${docente.nombre} ${docente.apellido}` : '—'}</td>
@@ -180,8 +181,8 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
               return (
                 <tr key={r.id} className="border-t">
                   <td className="p-2 align-middle">
-                    <div className="text-sm font-medium">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleDateString('es-ES', { timeZone: "UTC" })}</div>
-                    <div className="text-xs text-muted-foreground">{(typeof r.fecha === 'string' ? new Date(r.fecha) : r.fecha).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="text-sm font-medium tabular-nums">{formatearFechaCorta(r.fecha)}</div>
+                    <div className="text-xs text-muted-foreground first-letter:uppercase">{formatearDiaSemana(r.fecha)}</div>
                   </td>
                   <td className="p-2 align-middle">
                     <div className="text-sm">{equipo?.nombre ?? '—'}</div>

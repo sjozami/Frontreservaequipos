@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, AlertTriangle } from "lucide-react";
-import { MODULOS_HORARIOS } from "@/lib/constants";
+import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos";
 import { formatearHorarioModulos, verificarDisponibilidadModulos } from "@/lib/reservas-utils";
 import { useModulosOcupados } from "@/hooks/use-reservas";
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types";
@@ -46,7 +46,10 @@ export function EditarReservaModal({
   const [guardando, setGuardando] = useState(false)
 
   // Consulta de módulos ocupados contra el backend (evita reservas solapadas con datos desactualizados)
-  const { getModulosOcupadosParaEquipoYFecha } = useModulosOcupados(fechaSeleccionada, formData.equipoId)
+  const { getModulosOcupadosParaEquipoYFecha, getOcupacionModulo } = useModulosOcupados(
+    fechaSeleccionada,
+    formData.equipoId
+  )
 
   // Función helper para normalizar fechas y evitar problemas de zona horaria
   const normalizarFecha = (fecha: Date | string): Date => {
@@ -99,7 +102,37 @@ export function EditarReservaModal({
     }
   }, [fechaSeleccionada, formData.equipoId, reserva, getModulosOcupadosParaEquipoYFecha])
 
+  // Los módulos que ya son de esta reserva siguen siendo elegibles: el backend los
+  // reporta como ocupados por ella misma, y bloquearlos impediría volver a marcarlos.
+  const getDisponibilidadModulo = (modulo: number): DisponibilidadModulo => {
+    if (!fechaSeleccionada || !formData.equipoId) {
+      return { disponible: false, estado: "sin-contexto" }
+    }
+
+    if ((reserva?.modulos ?? []).includes(modulo)) {
+      return { disponible: true, estado: "propio" }
+    }
+
+    const ocupacion = getOcupacionModulo(formData.equipoId, fechaSeleccionada, modulo)
+    if (ocupacion) {
+      const pendiente = ocupacion.estado === "pendiente"
+      return {
+        disponible: false,
+        estado: pendiente ? "pendiente" : "confirmada",
+        razon: pendiente ? "Reservado" : "Ocupado",
+        docenteNombre: ocupacion.docenteNombre,
+      }
+    }
+
+    if (conflictos.includes(modulo)) {
+      return { disponible: false, estado: "confirmada", razon: "Ocupado" }
+    }
+
+    return { disponible: true, estado: "disponible" }
+  }
+
   const handleModuloToggle = (modulo: number) => {
+    if (!getDisponibilidadModulo(modulo).disponible) return
     setModulosSeleccionados((prev) =>
       prev.includes(modulo) ? prev.filter((m) => m !== modulo) : [...prev, modulo].sort((a, b) => a - b),
     )
@@ -231,50 +264,12 @@ export function EditarReservaModal({
               )}
             </div>
 
-            <div className="grid grid-cols-5 gap-2">
-              {MODULOS_HORARIOS.map((modulo) => {
-                const estaSeleccionado = modulosSeleccionados.includes(modulo.numero)
-                const tieneConflicto = conflictos.includes(modulo.numero)
-                const modulosOriginales = reserva?.modulos || []
-                const eraOriginal = modulosOriginales.includes(modulo.numero)
-
-                // Determinar el estado visual del botón
-                let variant: "default" | "outline" | "secondary" = "outline"
-                let className = "flex flex-col h-auto py-2"
-                let disabled = false
-
-                if (estaSeleccionado) {
-                  variant = "default"
-                } else if (tieneConflicto) {
-                  // Módulo ocupado por otra reserva - no seleccionable
-                  className += " border-red-500 bg-red-50 text-red-700 hover:bg-red-100 cursor-not-allowed"
-                  disabled = true
-                }
-
-                return (
-                  <Button
-                    key={modulo.numero}
-                    variant={variant}
-                    size="sm"
-                    className={cn(className)}
-                    onClick={() => handleModuloToggle(modulo.numero)}
-                    disabled={disabled}
-                    title={
-                      tieneConflicto 
-                        ? "Este módulo está ocupado por otra reserva" 
-                        : estaSeleccionado 
-                          ? "Clic para deseleccionar" 
-                          : "Clic para seleccionar"
-                    }
-                  >
-                    <span className="font-medium">Módulo {modulo.numero}</span>
-                    <span className="text-xs">{modulo.horaInicio} - {modulo.horaFin}</span>
-                    {tieneConflicto && !estaSeleccionado && <AlertTriangle className="w-3 h-3 mt-1" />}
-                    {eraOriginal && estaSeleccionado && <span className="text-xs opacity-75">(original)</span>}
-                  </Button>
-                )
-              })}
-            </div>
+            <SelectorModulos
+              seleccionados={modulosSeleccionados}
+              getDisponibilidad={getDisponibilidadModulo}
+              onToggle={(modulo) => handleModuloToggle(modulo)}
+              mensajeSinContexto="Elegí un equipo y una fecha para ver la disponibilidad."
+            />
 
             {conflictos.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">

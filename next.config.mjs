@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // La clave `eslint` dejó de soportarse en Next 16 (next lint se removió).
   typescript: {
     ignoreBuildErrors: true,
   },

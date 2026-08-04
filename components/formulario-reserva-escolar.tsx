@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from "lucide-react"
+import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
 import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
@@ -81,11 +82,9 @@ export function FormularioReservaEscolar({
   const [reservasParaValidacion, setReservasParaValidacion] = useState<ReservaEscolar[]>(reservasExistentes)
   const [guardando, setGuardando] = useState(false)
 
-  // Hook para obtener módulos ocupados desde el backend (solo para docentes)
-  const { isModuloOcupado, loading: loadingModulosOcupados } = useModulosOcupados(
-    isDocente() ? fecha : undefined, 
-    isDocente() ? equipoId : undefined
-  )
+  // Disponibilidad real contra el backend. Antes solo se consultaba para docentes,
+  // así que un admin podía pisar una reserva existente sin verla marcada.
+  const { getOcupacionModulo, loading: loadingModulosOcupados } = useModulosOcupados(fecha, equipoId)
 
   const generarFechasRecurrentes = (fechaInicio: Date, frecuencia: string, fechaFin: Date): Date[] => {
     const fechas: Date[] = []
@@ -309,28 +308,33 @@ export function FormularioReservaEscolar({
     return numeroModulo < moduloActual
   }
 
-  const getDisponibilidadModulo = (modulo: number): { disponible: boolean; razon?: string } => {
-    if (!equipoId || !fecha) return { disponible: true }
+  const getDisponibilidadModulo = (modulo: number): DisponibilidadModulo => {
+    // Sin equipo y fecha no hay con qué comparar: no afirmamos que esté libre.
+    if (!equipoId || !fecha) return { disponible: false, estado: "sin-contexto" }
 
     if (moduloYaPaso(modulo)) {
-      return { disponible: false, razon: "Ya pasó" }
+      return { disponible: false, estado: "pasado", razon: "Ya pasó" }
     }
 
-    // For docentes: check backend occupied modules first (real-time data)
-    if (isDocente()) {
-      const ocupadoEnBackend = isModuloOcupado(equipoId, fecha, modulo)
-      if (ocupadoEnBackend) {
-        return { disponible: false, razon: "Ocupado" }
+    // Disponibilidad autoritativa del backend, para cualquier rol.
+    const ocupacion = getOcupacionModulo(equipoId, fecha, modulo)
+    if (ocupacion) {
+      const pendiente = ocupacion.estado === "pendiente"
+      return {
+        disponible: false,
+        estado: pendiente ? "pendiente" : "confirmada",
+        razon: pendiente ? "Reservado" : "Ocupado",
+        docenteNombre: ocupacion.docenteNombre,
       }
     }
 
-    // Then check local reservations for validation
+    // Respaldo local, por si el fetch todavía no volvió.
     const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasParaValidacion)
-
-    return {
-      disponible: disponibilidad.disponible,
-      razon: disponibilidad.disponible ? undefined : "Ocupado",
+    if (!disponibilidad.disponible) {
+      return { disponible: false, estado: "confirmada", razon: "Ocupado" }
     }
+
+    return { disponible: true, estado: "disponible" }
   }
 
   const equipoSeleccionado = getEquipoSeleccionado()
@@ -612,7 +616,7 @@ export function FormularioReservaEscolar({
             <div>
               <CardTitle className="flex items-center gap-2">
                 Módulos Horarios
-                {isDocente() && loadingModulosOcupados && (
+                {loadingModulosOcupados && (
                   <div className="flex items-center gap-1 text-blue-600">
                     <Clock className="h-4 w-4 animate-spin" />
                     <span className="text-xs">Verificando disponibilidad...</span>
@@ -620,10 +624,11 @@ export function FormularioReservaEscolar({
                 )}
               </CardTitle>
               <CardDescription>
-                Selecciona los módulos de 40 minutos (8:00 - 18:40) • {modulosSeleccionados.length} seleccionados
-                {isDocente() && equipoId && fecha && (
-                  <span className="block text-blue-600 mt-1">
-                    ℹ️ Los módulos ocupados se muestran automáticamente desde el servidor
+                Módulos de 40 minutos • {modulosSeleccionados.length} seleccionado
+                {modulosSeleccionados.length === 1 ? "" : "s"}
+                {equipoId && fecha && (
+                  <span className="block mt-1">
+                    Los módulos ocupados se marcan con la disponibilidad real del equipo.
                   </span>
                 )}
                 {fecha && isToday(fecha) && (
@@ -669,59 +674,11 @@ export function FormularioReservaEscolar({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-         
-{MODULOS_HORARIOS.map((modulo) => {
-  const { disponible, razon } = getDisponibilidadModulo(modulo.numero)
-  const seleccionado = modulosSeleccionados.includes(modulo.numero)
-  const yaPaso = moduloYaPaso(modulo.numero)
-
-  return (
-    <div
-      key={modulo.numero}
-      className={`border-2 rounded-lg p-3 transition-colors ${
-        seleccionado
-          ? "border-primary bg-primary/10 cursor-pointer"
-          : disponible
-            ? "border-border hover:border-primary/50 cursor-pointer"
-            : yaPaso
-              ? "border-amber-400 bg-amber-100 cursor-not-allowed opacity-70"
-              : "border-red-500 bg-red-100 cursor-not-allowed opacity-80"
-      }`}
-      onClick={() => {
-        if (disponible && equipoId && fecha) {
-          handleSeleccionarModulo(modulo.numero, !seleccionado)
-        }
-      }}
-    >
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          checked={seleccionado}
-          disabled={!disponible || !equipoId || !fecha}
-          onCheckedChange={() => handleSeleccionarModulo(modulo.numero, !seleccionado)}
-        />
-        <div className="flex-1 min-w-0">
-          <p className={`font-medium text-sm ${!disponible && !yaPaso ? "text-red-700" : ""}`}>
-            {modulo.nombre}
-          </p>
-          <p className={`text-xs ${!disponible && !yaPaso ? "text-red-600" : "text-muted-foreground"}`}>
-            {modulo.horaInicio} - {modulo.horaFin}
-          </p>
-        </div>
-      </div>
-      {!disponible && equipoId && fecha && (
-        <div className="flex items-center mt-1">
-          <AlertCircle className={`w-3 h-3 mr-1 ${yaPaso ? "text-amber-600" : "text-red-600"}`} />
-          <span className={`text-xs font-medium ${yaPaso ? "text-amber-600" : "text-red-600"}`}>
-            {yaPaso ? razon : "OCUPADO"}
-          </span>
-        </div>
-      )}
-    </div>
-  )
-})}
-
-          </div>
+          <SelectorModulos
+            seleccionados={modulosSeleccionados}
+            getDisponibilidad={getDisponibilidadModulo}
+            onToggle={handleSeleccionarModulo}
+          />
           {errores.modulos && <p className="text-sm text-destructive mt-2">{errores.modulos}</p>}
           {errores.disponibilidad && <p className="text-sm text-destructive mt-2">{errores.disponibilidad}</p>}
         </CardContent>

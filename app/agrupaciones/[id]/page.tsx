@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,16 +13,18 @@ import type { AgrupacionReserva, ReservaIndividual } from "@/lib/types"
 import Link from "next/link"
 
 interface PageProps {
-  params: { id: string }
+  // Next 16: params es una Promise; en un client component se desenvuelve con use().
+  params: Promise<{ id: string }>
 }
 
 export default function DetalleAgrupacionPage({ params }: PageProps) {
+  const { id } = use(params)
   const router = useRouter()
   const [agrupaciones, setAgrupaciones] = useState<AgrupacionReserva[]>(() => agruparReservas([]))
   const [modoEdicion, setModoEdicion] = useState(false)
   const [dialogEliminar, setDialogEliminar] = useState(false)
 
-  const agrupacion = agrupaciones.find((a) => a.id === params.id)
+  const agrupacion = agrupaciones.find((a) => a.id === id)
 
   useEffect(() => {
     if (!agrupacion) {

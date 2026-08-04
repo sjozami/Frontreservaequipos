@@ -16,7 +16,6 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import type { AgrupacionReserva, ReservaIndividual, PeriodoTipo } from "@/lib/types"
 import { PERIODOS_PREDEFINIDOS } from "@/lib/types"
-import { modulosMock } from "@/lib/mock-data"
 
 interface FormularioAgrupacionProps {
   agrupacion?: AgrupacionReserva
@@ -111,10 +110,6 @@ export function FormularioAgrupacion({
     } else {
       setReservasSeleccionadas(reservasSeleccionadas.filter((id) => id !== reservaId))
     }
-  }
-
-  const getModuloNombre = (moduloId: string) => {
-    return modulosMock.find((m) => m.id === moduloId)?.nombre || "Módulo desconocido"
   }
 
   const todasLasReservas = [...reservasDisponibles, ...(agrupacion?.reservas || [])]

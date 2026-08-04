@@ -98,11 +98,34 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
     return modulosSeleccionados.some(modulo => modulosOcupadosEquipo.includes(modulo));
   }, [getModulosOcupadosParaEquipoYFecha]);
 
+  /**
+   * Devuelve el estado de ocupación de un módulo, o null si está libre.
+   * Sirve para que la UI distinga una reserva confirmada de una pendiente
+   * en vez de mostrar todo como un "ocupado" indistinto.
+   */
+  const getOcupacionModulo = useCallback((
+    equipoId: string,
+    fecha: Date,
+    modulo: number
+  ): { estado: string; docenteNombre?: string } | null => {
+    const fechaStr = fecha.toISOString().split('T')[0];
+
+    const ocupacion = modulosOcupados.find(item =>
+      item.equipoId === equipoId &&
+      item.fecha.split('T')[0] === fechaStr &&
+      item.modulos.includes(modulo)
+    );
+
+    if (!ocupacion) return null;
+    return { estado: ocupacion.estado, docenteNombre: ocupacion.docenteNombre };
+  }, [modulosOcupados]);
+
   return {
     modulosOcupados,
     loading,
     error,
     isModuloOcupado,
+    getOcupacionModulo,
     getModulosOcupadosParaEquipoYFecha,
     tieneConflictos,
     refresh: () => {
