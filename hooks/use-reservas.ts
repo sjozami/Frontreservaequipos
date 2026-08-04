@@ -107,7 +107,7 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
     equipoId: string,
     fecha: Date,
     modulo: number
-  ): { estado: string; docenteNombre?: string } | null => {
+  ): { estado: string; docenteNombre?: string; docenteCurso?: string; docenteMateria?: string } | null => {
     const fechaStr = fecha.toISOString().split('T')[0];
 
     const ocupacion = modulosOcupados.find(item =>
@@ -117,7 +117,12 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
     );
 
     if (!ocupacion) return null;
-    return { estado: ocupacion.estado, docenteNombre: ocupacion.docenteNombre };
+    return {
+      estado: ocupacion.estado,
+      docenteNombre: ocupacion.docenteNombre,
+      docenteCurso: ocupacion.docenteCurso,
+      docenteMateria: ocupacion.docenteMateria
+    };
   }, [modulosOcupados]);
 
   return {

@@ -142,7 +142,10 @@ export interface ModuloOcupado {
   modulos: number[] // Array of occupied module numbers
   equipoId: string
   estado: string
+  // Quién ocupa el módulo, para que la grilla no muestre solo "ocupado".
   docenteNombre?: string
+  docenteCurso?: string
+  docenteMateria?: string
 }
 
 export interface AgrupacionReservaEscolar {

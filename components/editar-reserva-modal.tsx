@@ -121,6 +121,8 @@ export function EditarReservaModal({
         estado: pendiente ? "pendiente" : "confirmada",
         razon: pendiente ? "Reservado" : "Ocupado",
         docenteNombre: ocupacion.docenteNombre,
+        docenteCurso: ocupacion.docenteCurso,
+        docenteMateria: ocupacion.docenteMateria,
       }
     }
 

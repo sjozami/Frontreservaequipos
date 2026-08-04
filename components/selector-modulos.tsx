@@ -24,6 +24,8 @@ export interface DisponibilidadModulo {
   estado: EstadoModulo
   razon?: string
   docenteNombre?: string
+  docenteCurso?: string
+  docenteMateria?: string
 }
 
 interface SelectorModulosProps {
@@ -77,13 +79,17 @@ export function SelectorModulos({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
         {MODULOS_HORARIOS.map((modulo) => {
-          const { disponible, estado, razon, docenteNombre } = getDisponibilidad(modulo.numero)
+          const { disponible, estado, razon, docenteNombre, docenteCurso, docenteMateria } =
+            getDisponibilidad(modulo.numero)
           const seleccionado = seleccionados.includes(modulo.numero)
           const ocupadoPorOtro = estado === "confirmada" || estado === "pendiente"
 
+          // "3°A • Historia": el contexto de quién lo ocupa, cuando lo tenemos.
+          const contextoDocente = [docenteCurso, docenteMateria].filter(Boolean).join(" • ")
+
           const detalle = ocupadoPorOtro
             ? docenteNombre
-              ? `${razon} por ${docenteNombre}`
+              ? `${razon} por ${docenteNombre}${contextoDocente ? ` (${contextoDocente})` : ""}`
               : `${razon} — no se puede seleccionar`
             : estado === "pasado"
               ? "Este módulo ya pasó"
@@ -133,13 +139,27 @@ export function SelectorModulos({
               </p>
 
               {ocupadoPorOtro && (
-                <p
-                  className={`text-[11px] font-medium mt-1 uppercase tracking-wide ${
-                    estado === "pendiente" ? "text-estado-pendiente" : "text-estado-ocupado"
-                  }`}
-                >
-                  {razon}
-                </p>
+                <div className="mt-1">
+                  <p
+                    className={`text-[11px] font-medium uppercase tracking-wide ${
+                      estado === "pendiente" ? "text-estado-pendiente" : "text-estado-ocupado"
+                    }`}
+                  >
+                    {razon}
+                  </p>
+                  {docenteNombre && (
+                    <>
+                      <p className="mt-0.5 text-xs font-medium leading-tight text-foreground/80 break-words">
+                        {docenteNombre}
+                      </p>
+                      {contextoDocente && (
+                        <p className="text-[11px] leading-tight text-muted-foreground break-words">
+                          {contextoDocente}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
               {estado === "pasado" && (
                 <p className="text-[11px] font-medium mt-1 text-estado-pasado">Ya pasó</p>
