@@ -2,15 +2,14 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, ArrowLeft } from "lucide-react"
+import { Search, AlertTriangle, Layers } from "lucide-react"
+import { AppShell } from "@/components/app-shell"
 import { AgrupacionReservas } from "@/components/agrupacion-reservas"
 import { DetalleAgrupacion } from "@/components/detalle-agrupacion"
 import { agruparReservas } from "@/lib/reservas-utils"
 import type { AgrupacionReserva, ReservaIndividual } from "@/lib/types"
-import Link from "next/link"
 
 export default function AgrupacionesPage() {
   const [agrupaciones, setAgrupaciones] = useState<AgrupacionReserva[]>([])
@@ -52,28 +51,23 @@ export default function AgrupacionesPage() {
   })
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Volver
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Gestión de Agrupaciones</h1>
-                <p className="text-muted-foreground">Organiza y gestiona agrupaciones de reservas</p>
-              </div>
-            </div>
+    <AppShell
+      requireAdmin
+      titulo="Agrupaciones"
+      descripcion="Agrupá reservas relacionadas para gestionarlas juntas."
+    >
+      <div>
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-estado-pendiente-borde bg-estado-pendiente-bg p-4">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-estado-pendiente" aria-hidden="true" />
+          <div className="text-sm">
+            <p className="font-medium text-estado-pendiente">Función en desarrollo</p>
+            <p className="mt-1 text-muted-foreground">
+              Las agrupaciones todavía no se guardan en el servidor: lo que crees acá se pierde al
+              recargar la página.
+            </p>
           </div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-6 py-6">
         {/* Filtros */}
         <Card className="mb-6">
           <CardHeader>
@@ -83,9 +77,10 @@ export default function AgrupacionesPage() {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <Input
-                    placeholder="Buscar agrupaciones..."
+                    placeholder="Buscar por nombre o usuario…"
+                    aria-label="Buscar agrupaciones"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -93,7 +88,7 @@ export default function AgrupacionesPage() {
                 </div>
               </div>
               <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger className="w-full md:w-48" aria-label="Filtrar por estado">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,8 +120,16 @@ export default function AgrupacionesPage() {
           </CardHeader>
           <CardContent>
             {agrupacionesFiltradas.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No se encontraron agrupaciones</p>
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <Layers className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+                <p className="font-medium">
+                  {agrupaciones.length === 0 ? "Todavía no hay agrupaciones" : "Ninguna coincide con el filtro"}
+                </p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  {agrupaciones.length === 0
+                    ? "Creá una agrupación para juntar varias reservas relacionadas."
+                    : "Probá con otro término de búsqueda o cambiá el estado."}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -144,6 +147,6 @@ export default function AgrupacionesPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppShell>
   )
 }

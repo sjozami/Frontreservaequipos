@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, Clock, User, Package, BookOpen, FileText, Repeat } from "lucide-react";
 import { formatearHorarioModulos } from "@/lib/reservas-utils";
+import { formatearFechaLarga, formatearFechaCorta } from "@/lib/fechas";
+import { EstadoReservaBadge } from "@/components/estado-reserva-badge";
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types";
 import React from "react";
 
@@ -27,14 +29,7 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
 
   const getFechaFinalizacion = () => {
     if (reserva.esRecurrente && reserva.fechaFin) {
-      const fecha = typeof reserva.fechaFin === 'string' ? new Date(reserva.fechaFin) : reserva.fechaFin;
-      return fecha.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC"
-      });
+      return formatearFechaLarga(reserva.fechaFin);
     }
     return null;
   };
@@ -70,20 +65,9 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">{equipo?.nombre || "Equipo desconocido"}</h3>
-              <p className="text-sm text-muted-foreground">ID: {reserva.id}</p>
+              {equipo?.ubicacion && <p className="text-sm text-muted-foreground">{equipo.ubicacion}</p>}
             </div>
-            <Badge
-              variant={
-                reserva.estado === "confirmada"
-                  ? "default"
-                  : reserva.estado === "pendiente"
-                    ? "secondary"
-                    : "destructive"
-              }
-              className="text-sm px-3 py-1"
-            >
-              {reserva.estado.toUpperCase()}
-            </Badge>
+            <EstadoReservaBadge estado={reserva.estado} />
           </div>
 
           <Separator />
@@ -109,10 +93,6 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
                 <span className="text-muted-foreground">Materia:</span>
                 <p className="font-medium">{docente?.materia}</p>
               </div>
-              <div>
-                <span className="text-muted-foreground">ID:</span>
-                <p className="font-medium">{docente?.id}</p>
-              </div>
             </div>
           </div>
 
@@ -127,20 +107,8 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Fecha de inicio:</span>
-                <span className="font-medium">
-                  {(() => {
-                    const fecha = typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha;
-                    // Use UTC methods to display the date as stored, avoiding timezone interpretation
-                    return fecha.toLocaleDateString("es-ES", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long", 
-                      day: "numeric",
-                      timeZone: "UTC"
-                    });
-                  })()}
-                </span>
+                <span className="text-muted-foreground">{reserva.esRecurrente ? "Desde:" : "Fecha:"}</span>
+                <span className="font-medium first-letter:uppercase">{formatearFechaLarga(reserva.fecha)}</span>
               </div>
 
               {getFechaFinalizacion() && (

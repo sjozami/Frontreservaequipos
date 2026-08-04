@@ -12,6 +12,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from "lucide-react"
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
+import { CampoError } from "@/components/campo-error"
+import { formatearFechaLarga } from "@/lib/fechas"
 import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
@@ -393,7 +395,7 @@ export function FormularioReservaEscolar({
             <div>
               <Label htmlFor="equipo">Equipo a reservar *</Label>
               <Select value={equipoId} onValueChange={setEquipoId}>
-                <SelectTrigger className={errores.equipo ? "border-destructive" : ""}>
+                <SelectTrigger id="equipo" aria-invalid={!!errores.equipo} aria-describedby={errores.equipo ? "error-equipo" : undefined} className={errores.equipo ? "border-destructive" : ""}>
                   <SelectValue placeholder="Seleccionar equipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -407,7 +409,7 @@ export function FormularioReservaEscolar({
                   ))}
                 </SelectContent>
               </Select>
-              {errores.equipo && <p className="text-sm text-destructive mt-1">{errores.equipo}</p>}
+              <CampoError id="error-equipo">{errores.equipo}</CampoError>
               {equipoSeleccionado && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {equipoSeleccionado.descripcion}
@@ -425,7 +427,7 @@ export function FormularioReservaEscolar({
                 </div>
               ) : (
                 <Select value={docenteId} onValueChange={setDocenteId}>
-                  <SelectTrigger className={errores.docente ? "border-destructive" : ""}>
+                  <SelectTrigger id="docente" aria-invalid={!!errores.docente} aria-describedby={errores.docente ? "error-docente" : undefined} className={errores.docente ? "border-destructive" : ""}>
                     <SelectValue placeholder="Seleccionar docente" />
                   </SelectTrigger>
                   <SelectContent>
@@ -438,7 +440,7 @@ export function FormularioReservaEscolar({
                   </SelectContent>
                 </Select>
               )}
-              {errores.docente && <p className="text-sm text-destructive mt-1">{errores.docente}</p>}
+              <CampoError id="error-docente">{errores.docente}</CampoError>
             </div>
           </div>
 
@@ -481,7 +483,7 @@ export function FormularioReservaEscolar({
                     />
                   </PopoverContent>
               </Popover>
-              {errores.fecha && <p className="text-sm text-destructive mt-1">{errores.fecha}</p>}
+              <CampoError id="error-fecha">{errores.fecha}</CampoError>
             </div>
 
             <div>
@@ -578,7 +580,7 @@ export function FormularioReservaEscolar({
                       />
                     </PopoverContent>
                   </Popover>
-                  {errores.fechaHasta && <p className="text-sm text-destructive mt-1">{errores.fechaHasta}</p>}
+                  <CampoError id="error-fecha-hasta">{errores.fechaHasta}</CampoError>
                 </div>
 
                 {fechasGeneradas.length > 0 && (
@@ -599,7 +601,7 @@ export function FormularioReservaEscolar({
                       </div>
                     </div>
                     {errores.disponibilidadRecurrente && (
-                      <p className="text-sm text-destructive mt-1">{errores.disponibilidadRecurrente}</p>
+                      <CampoError>{errores.disponibilidadRecurrente}</CampoError>
                     )}
                   </div>
                 )}
@@ -679,8 +681,8 @@ export function FormularioReservaEscolar({
             getDisponibilidad={getDisponibilidadModulo}
             onToggle={handleSeleccionarModulo}
           />
-          {errores.modulos && <p className="text-sm text-destructive mt-2">{errores.modulos}</p>}
-          {errores.disponibilidad && <p className="text-sm text-destructive mt-2">{errores.disponibilidad}</p>}
+          <CampoError id="error-modulos">{errores.modulos}</CampoError>
+          <CampoError>{errores.disponibilidad}</CampoError>
         </CardContent>
       </Card>
 
@@ -691,10 +693,14 @@ export function FormularioReservaEscolar({
           <CardDescription>Información adicional sobre la reserva</CardDescription>
         </CardHeader>
         <CardContent>
+          <Label htmlFor="observaciones" className="sr-only">
+            Observaciones de la reserva
+          </Label>
           <Textarea
+            id="observaciones"
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
-            placeholder="Detalles adicionales, requerimientos especiales, etc..."
+            placeholder="Detalles adicionales, requerimientos especiales, etc…"
             rows={3}
           />
         </CardContent>
@@ -702,52 +708,54 @@ export function FormularioReservaEscolar({
 
       {/* Resumen */}
       {modulosSeleccionados.length > 0 && docenteSeleccionado && equipoSeleccionado && fecha && (
-        <Card className="bg-muted">
+        <Card className="border-primary/40 bg-primary/5">
           <CardContent className="pt-6">
             <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Resumen de la Reserva
+              <Clock className="w-4 h-4 text-primary" aria-hidden="true" />
+              Resumen de la reserva
             </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Docente:</span>
-                <span className="font-medium">
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Docente</dt>
+                <dd className="font-medium text-right">
                   {docenteSeleccionado.nombre} {docenteSeleccionado.apellido} ({docenteSeleccionado.curso})
-                </span>
+                </dd>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Equipo:</span>
-                <span className="font-medium">{equipoSeleccionado.nombre}</span>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Equipo</dt>
+                <dd className="font-medium text-right">{equipoSeleccionado.nombre}</dd>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{esRecurrente ? "Fecha inicio:" : "Fecha:"}</span>
-                <span className="font-medium">{format(fecha, "dd/MM/yyyy", { locale: es })}</span>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">{esRecurrente ? "Desde" : "Fecha"}</dt>
+                <dd className="font-medium text-right first-letter:uppercase">{formatearFechaLarga(fecha)}</dd>
               </div>
               {esRecurrente && fechaHasta && (
                 <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Fecha fin:</span>
-                    <span className="font-medium">{format(fechaHasta, "dd/MM/yyyy", { locale: es })}</span>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Hasta</dt>
+                    <dd className="font-medium text-right first-letter:uppercase">{formatearFechaLarga(fechaHasta)}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Frecuencia:</span>
-                    <span className="font-medium capitalize">{frecuencia}</span>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Frecuencia</dt>
+                    <dd className="font-medium text-right first-letter:uppercase">{frecuencia}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total reservas:</span>
-                    <span className="font-medium">{fechasGeneradas.length}</span>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Total de reservas</dt>
+                    <dd className="font-medium text-right tabular-nums">{fechasGeneradas.length}</dd>
                   </div>
                 </>
               )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Horario:</span>
-                <span className="font-medium">{formatearHorarioModulos(modulosSeleccionados)}</span>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Horario</dt>
+                <dd className="font-medium text-right tabular-nums">{formatearHorarioModulos(modulosSeleccionados)}</dd>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Duración:</span>
-                <span className="font-medium">{modulosSeleccionados.length * 40} minutos</span>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Duración</dt>
+                <dd className="font-medium text-right tabular-nums">
+                  {modulosSeleccionados.length * 40} minutos
+                </dd>
               </div>
-            </div>
+            </dl>
           </CardContent>
         </Card>
       )}

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Calendar, Clock, Package, User } from "lucide-react";
 import { formatearHorarioModulos } from "@/lib/reservas-utils";
+import { formatearFechaLarga } from "@/lib/fechas";
+import { EstadoReservaBadge } from "@/components/estado-reserva-badge";
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types";
 import React from "react";
 
@@ -47,7 +49,7 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
           <div className="bg-muted p-4 rounded-md space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Detalles de la reserva</h4>
-              <Badge variant="outline">{reserva.estado}</Badge>
+              <EstadoReservaBadge estado={reserva.estado} />
             </div>
 
             <div className="space-y-2 text-sm">
@@ -68,7 +70,7 @@ export function CancelarReservaModal(props: CancelarReservaModalProps) {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span>
-                  <strong>Fecha:</strong> {(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                  <strong>Fecha:</strong> <span className="first-letter:uppercase">{formatearFechaLarga(reserva.fecha)}</span>
                 </span>
               </div>
 
