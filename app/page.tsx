@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import ProtectedRoute from "@/components/protected-route"
+import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,8 +38,6 @@ import AdminReservasTable from "@/components/admin-reservas-table"
 import { DetalleReservaModal } from "@/components/detalle-reserva-modal"
 import { EditarReservaModal } from "@/components/editar-reserva-modal"
 import { CancelarReservaModal } from "@/components/cancelar-reserva-modal"
-import { HeaderProfesional } from "@/components/header-profesional";
-import UserNavigation from "@/components/user-navigation";
 import { useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
@@ -423,36 +421,13 @@ function ReservasEscolaresPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header with Authentication */}
-      <div className="border-b bg-white">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sistema de Reservas</h1>
-              <p className="text-gray-600">
-                {isAdmin() ? 'Panel de administración' : 'Panel de docente'}
-              </p>
-            </div>
-            <UserNavigation />
-          </div>
-        </div>
-      </div>
-
-      {/* Sección informativa para el administrador */}
-      <div className="container mx-auto px-6 pt-6 pb-2">
-        <Card className="mb-6 shadow-professional border-l-4 border-l-primary/40">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-primary">Administración General</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Desde este panel puedes administrar la carga de <b>equipos</b> y <b>docentes</b>, así como la <b>asignación y reserva</b> de equipos escolares. Utiliza los accesos directos para gestionar cada área y mantener actualizado el sistema.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <div className="container mx-auto px-6 py-8 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <AppShell
+      requireAdmin
+      titulo="Panel"
+      descripcion="Resumen de la actividad y acceso a la gestión de equipos, docentes y reservas."
+    >
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-professional hover:shadow-professional-lg transition-all duration-300 animate-slide-up">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Reservas</CardTitle>
@@ -826,14 +801,11 @@ function ReservasEscolaresPageContent() {
         docentes={docentes}
         equipos={equipos}
       />
-    </div>
+    </AppShell>
   )
 }
 
+// AppShell ya envuelve el contenido en ProtectedRoute.
 export default function ReservasEscolaresPage() {
-  return (
-    <ProtectedRoute requireAdmin={true}>
-      <ReservasEscolaresPageContent />
-    </ProtectedRoute>
-  );
+  return <ReservasEscolaresPageContent />
 }

@@ -36,20 +36,20 @@ interface SelectorModulosProps {
 
 const ESTILOS: Record<EstadoModulo | "seleccionado", string> = {
   seleccionado: "border-primary bg-primary/10 ring-2 ring-primary/25",
-  disponible: "border-border bg-background hover:border-primary/60 hover:bg-primary/5",
+  disponible: "border-border bg-card hover:border-primary/60 hover:bg-primary/5",
   propio: "border-primary/40 bg-primary/5",
-  confirmada: "border-red-300 bg-red-50",
-  pendiente: "border-orange-300 bg-orange-50",
-  pasado: "border-muted bg-muted/60",
-  "sin-contexto": "border-dashed border-border bg-muted/30",
+  confirmada: "border-estado-ocupado-borde bg-estado-ocupado-bg",
+  pendiente: "border-estado-pendiente-borde bg-estado-pendiente-bg",
+  pasado: "border-estado-pasado-borde bg-estado-pasado-bg",
+  "sin-contexto": "border-dashed border-border bg-muted/40",
 }
 
 const LEYENDA: { clase: string; texto: string }[] = [
-  { clase: "border-border bg-background", texto: "Disponible" },
+  { clase: "border-border bg-card", texto: "Disponible" },
   { clase: "border-primary bg-primary/15", texto: "Seleccionado" },
-  { clase: "border-red-400 bg-red-100", texto: "Ocupado" },
-  { clase: "border-orange-400 bg-orange-100", texto: "Reservado (pendiente)" },
-  { clase: "border-muted bg-muted", texto: "Ya pasó" },
+  { clase: "border-estado-ocupado-borde bg-estado-ocupado-bg", texto: "Ocupado" },
+  { clase: "border-estado-pendiente-borde bg-estado-pendiente-bg", texto: "Reservado (pendiente)" },
+  { clase: "border-estado-pasado-borde bg-estado-pasado-bg", texto: "Ya pasó" },
 ]
 
 export function SelectorModulos({
@@ -118,7 +118,7 @@ export function SelectorModulos({
                 {ocupadoPorOtro && (
                   <Lock
                     className={`w-3.5 h-3.5 shrink-0 ${
-                      estado === "pendiente" ? "text-orange-500" : "text-red-500"
+                      estado === "pendiente" ? "text-estado-pendiente" : "text-estado-ocupado"
                     }`}
                   />
                 )}
@@ -135,14 +135,14 @@ export function SelectorModulos({
               {ocupadoPorOtro && (
                 <p
                   className={`text-[11px] font-medium mt-1 uppercase tracking-wide ${
-                    estado === "pendiente" ? "text-orange-600" : "text-red-600"
+                    estado === "pendiente" ? "text-estado-pendiente" : "text-estado-ocupado"
                   }`}
                 >
                   {razon}
                 </p>
               )}
               {estado === "pasado" && (
-                <p className="text-[11px] font-medium mt-1 text-muted-foreground">Ya pasó</p>
+                <p className="text-[11px] font-medium mt-1 text-estado-pasado">Ya pasó</p>
               )}
             </button>
           )

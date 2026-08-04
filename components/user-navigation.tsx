@@ -50,58 +50,14 @@ export default function UserNavigation() {
   };
 
   const getRoleBadgeColor = () => {
-    return user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
+    return user.role === 'ADMIN'
+      ? 'bg-primary/10 text-primary border-primary/20'
+      : 'bg-muted text-muted-foreground border-border';
   };
 
+  // La navegación por sección vive en AppShell; acá queda solo el menú del usuario.
   return (
-    <div className="flex items-center space-x-4">
-      {/* Navegación específica por rol */}
-      <nav className="hidden md:flex items-center space-x-2">
-        {isAdmin() && (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/docentes')}
-              className="flex items-center space-x-1"
-            >
-              <Users className="h-4 w-4" />
-              <span>Docentes</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/equipos')}
-              className="flex items-center space-x-1"
-            >
-              <Laptop className="h-4 w-4" />
-              <span>Equipos</span>
-            </Button>
-          </>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/reservas')}
-          className="flex items-center space-x-1"
-        >
-          <Calendar className="h-4 w-4" />
-          <span>Reservas</span>
-        </Button>
-        {isAdmin() && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/agrupaciones')}
-            className="flex items-center space-x-1"
-          >
-            <BookOpen className="h-4 w-4" />
-            <span>Agrupaciones</span>
-          </Button>
-        )}
-      </nav>
-
-      {/* User Menu */}
+    <div className="flex items-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -149,34 +105,7 @@ export default function UserNavigation() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
-          {/* Navegación móvil */}
-          <div className="md:hidden">
-            <DropdownMenuItem onClick={() => router.push('/reservas')}>
-              <Calendar className="mr-2 h-4 w-4" />
-              <span>Mis Reservas</span>
-            </DropdownMenuItem>
-            {isAdmin() && (
-              <>
-                <DropdownMenuItem onClick={() => router.push('/docentes')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>Gestión de Docentes</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/equipos')}>
-                  <Laptop className="mr-2 h-4 w-4" />
-                  <span>Gestión de Equipos</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/agrupaciones')}>
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  <span>Agrupaciones</span>
-                </DropdownMenuItem>
-              </>
-            )}
-            <DropdownMenuSeparator />
-          </div>
-
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+          <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Cerrar Sesión</span>
           </DropdownMenuItem>

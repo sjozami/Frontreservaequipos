@@ -13,8 +13,9 @@ import { obtenerDocentes } from "@/lib/docenteController"
 import { obtenerEquipos } from "@/lib/equipoController"
 import { formatearHorarioModulos } from "@/lib/reservas-utils"
 import { formatearFechaLarga } from "@/lib/fechas"
-import ProtectedRoute from "@/components/protected-route"
-import UserNavigation from "@/components/user-navigation"
+import { AppShell } from "@/components/app-shell"
+import { EstadoReservaBadge } from "@/components/estado-reserva-badge"
+import { CalendarDays, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types"
 import { toast } from "sonner"
@@ -142,23 +143,19 @@ function PageReservasDocentesContent() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between py-4 border-b">
-          <h1 className="text-3xl font-bold">Sistema de Reservas</h1>
+      <AppShell titulo="Mis reservas" descripcion="Cargando tus reservas…">
+        <div className="space-y-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
         </div>
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
+      </AppShell>
     )
   }
 
   if (!currentDocente) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between py-4 border-b">
-          <h1 className="text-3xl font-bold">Sistema de Reservas</h1>
-          <UserNavigation />
-        </div>
+      <AppShell titulo="Mis reservas">
         <Card>
           <CardHeader>
             <CardTitle>Configuración de Docente</CardTitle>
@@ -183,33 +180,23 @@ function PageReservasDocentesContent() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between py-4 border-b">
-        <h1 className="text-3xl font-bold">Sistema de Reservas</h1>
-        <UserNavigation />
-      </div>
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">
-          Reservas — Docente: {currentDocente.nombre} {currentDocente.apellido}
-        </h2>
-        <Button onClick={() => setShowForm((s) => !s)}>{showForm ? "Cerrar formulario" : "Nueva Reserva"}</Button>
-      </div>
-
+    <AppShell
+      titulo="Mis reservas"
+      descripcion={`${currentDocente.nombre} ${currentDocente.apellido} · ${currentDocente.curso ?? ""} ${currentDocente.materia ?? ""}`.trim()}
+      acciones={
+        <Button onClick={() => setShowForm((s) => !s)}>
+          {showForm ? "Cerrar formulario" : "Nueva reserva"}
+        </Button>
+      }
+    >
+      <div className="space-y-6">
       {showForm && (
         <div>
-          {user?.role === "DOCENTE" && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Modo Docente:</strong> Los módulos ocupados se verifican automáticamente con el servidor. Los
-                módulos en rojo están ocupados por otras reservas.
-              </p>
-            </div>
-          )}
           <FormularioReservaEscolar
             onCrearReserva={(r) => handleCrearReserva(r)}
             onCancelar={() => setShowForm(false)}
@@ -228,47 +215,52 @@ function PageReservasDocentesContent() {
         </CardHeader>
         <CardContent>
           {misReservas.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="font-medium">No tenés reservas en el rango seleccionado (±30 días)</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Creá una reserva con el botón “Nueva Reserva”.
+            <div className="flex flex-col items-center gap-2 py-12 text-center">
+              <CalendarDays className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+              <p className="font-medium">Todavía no tenés reservas</p>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Se muestran las de los últimos y próximos 30 días. Creá una con “Nueva reserva”.
               </p>
+              <Button className="mt-2" onClick={() => setShowForm(true)}>
+                Nueva reserva
+              </Button>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {misReservas.map((res) => {
-                const fechaObj = typeof res.fecha === "string" ? new Date(res.fecha) : res.fecha
-                return (
+            <ul className="space-y-3">
+              {misReservas.map((res) => (
                   <li
                     key={res.id}
-                    className="p-3 border rounded-md data-[estado=cancelada]:opacity-60"
+                    className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 data-[estado=cancelada]:opacity-60"
                     data-estado={res.estado}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="font-medium text-lg">
-                          {res.docente
-                            ? `${res.docente.nombre} ${res.docente.apellido}`
-                            : `${currentDocente.nombre} ${currentDocente.apellido}`}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="flex-1 min-w-[15rem]">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">
+                            {res.equipo?.nombre ??
+                              equipos.find((e) => e.id === res.equipoId)?.nombre ??
+                              res.equipoId}
+                          </span>
+                          <EstadoReservaBadge estado={res.estado} />
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          Equipo: {res.equipo?.nombre ?? equipos.find((e) => e.id === res.equipoId)?.nombre ?? res.equipoId}
-                        </div>
-                        <div className="text-xs text-muted-foreground first-letter:uppercase">
+
+                        <p className="mt-1 text-sm text-muted-foreground first-letter:uppercase">
                           {formatearFechaLarga(res.fecha)}
-                        </div>
-                        <div className="mt-2 text-sm">
-                          Horario: {res.modulos?.length ? formatearHorarioModulos(res.modulos) : "—"}
-                        </div>
+                        </p>
+
+                        <p className="mt-2 flex items-center gap-1.5 text-sm">
+                          <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          <span className="tabular-nums">
+                            {res.modulos?.length ? formatearHorarioModulos(res.modulos) : "Sin módulos"}
+                          </span>
+                        </p>
+
                         {res.observaciones && (
-                          <div className="mt-2 text-sm text-muted-foreground">Observaciones: {res.observaciones}</div>
+                          <p className="mt-2 text-sm text-muted-foreground">{res.observaciones}</p>
                         )}
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
-                        <div className="text-sm text-muted-foreground">
-                          Estado: <strong>{res.estado}</strong>
-                        </div>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -301,8 +293,7 @@ function PageReservasDocentesContent() {
                       </div>
                     </div>
                   </li>
-                )
-              })}
+              ))}
             </ul>
           )}
         </CardContent>
@@ -354,14 +345,12 @@ function PageReservasDocentesContent() {
         docentes={docentes}
         equipos={equipos}
       />
-    </div>
+      </div>
+    </AppShell>
   )
 }
 
+// AppShell ya envuelve el contenido en ProtectedRoute.
 export default function PageReservasDocentes() {
-  return (
-    <ProtectedRoute>
-      <PageReservasDocentesContent />
-    </ProtectedRoute>
-  )
+  return <PageReservasDocentesContent />
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatearHorarioModulos } from "@/lib/reservas-utils"
 import { formatearFechaCorta, formatearDiaSemana } from "@/lib/fechas"
+import { EstadoReservaBadge } from "@/components/estado-reserva-badge"
 
 interface Props {
   reservas: ReservaEscolar[]
@@ -157,9 +158,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                         <td className="p-2">{docente ? `${docente.nombre} ${docente.apellido}` : '—'}</td>
                         <td className="p-2 text-sm">{formatearHorarioModulos(r.modulos)}</td>
                         <td className="p-2">
-                          <Badge variant={r.estado === 'confirmada' ? 'default' : r.estado === 'pendiente' ? 'secondary' : 'destructive'} className="text-sm px-2 py-1">
-                            {r.estado.charAt(0).toUpperCase() + r.estado.slice(1)}
-                          </Badge>
+                          <EstadoReservaBadge estado={r.estado} />
                         </td>
                         <td className="p-2">
                           <div className="flex gap-2">
@@ -193,9 +192,7 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                   </td>
                   <td className="p-2 align-middle text-sm">{formatearHorarioModulos(r.modulos)}</td>
                   <td className="p-2 align-middle">
-                    <Badge variant={r.estado === 'confirmada' ? 'default' : r.estado === 'pendiente' ? 'secondary' : 'destructive'} className="text-sm px-2 py-1">
-                      {r.estado.charAt(0).toUpperCase() + r.estado.slice(1)}
-                    </Badge>
+                    <EstadoReservaBadge estado={r.estado} />
                   </td>
                   <td className="p-2 align-middle">
                     <div className="flex gap-2">

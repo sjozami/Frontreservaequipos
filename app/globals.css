@@ -7,16 +7,18 @@
   /* Educational Theme - Professional Green Palette */
   --background: oklch(1 0 0); /* #ffffff */
   --foreground: oklch(0.25 0 0); /* #374151 */
-  --card: oklch(0.98 0.02 142); /* #f0fdf4 */
-  --card-foreground: oklch(0.25 0 0); /* #374151 */
+  /* Las tarjetas van neutras: el verde de marca queda para acciones y acentos,
+     no de fondo en cada bloque (teñía toda la interfaz). */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0 0);
   --popover: oklch(1 0 0); /* #ffffff */
   --popover-foreground: oklch(0.25 0 0); /* #374151 */
   --primary: oklch(0.45 0.15 142); /* #15803d */
   --primary-foreground: oklch(1 0 0); /* #ffffff */
-  --secondary: oklch(0.25 0 0); /* #374151 */
-  --secondary-foreground: oklch(1 0 0); /* #ffffff */
-  --muted: oklch(0.98 0.02 142); /* #f0fdf4 */
-  --muted-foreground: oklch(0.35 0 0); /* #4b5563 */
+  --secondary: oklch(0.96 0.005 142);
+  --secondary-foreground: oklch(0.25 0 0);
+  --muted: oklch(0.97 0.003 142);
+  --muted-foreground: oklch(0.48 0.01 142);
   --accent: oklch(0.7 0.15 100); /* #84cc16 */
   --accent-foreground: oklch(1 0 0); /* #ffffff */
   --destructive: oklch(0.55 0.2 25); /* #dc2626 */
@@ -38,6 +40,25 @@
   --sidebar-accent-foreground: oklch(1 0 0); /* #ffffff */
   --sidebar-border: oklch(0.85 0 0); /* #d1d5db */
   --sidebar-ring: oklch(0.6 0.15 180 / 0.5); /* rgba(20, 184, 166, 0.5) */
+
+  /* Estados de una reserva. Se definen como tokens para que el mismo estado se
+     vea igual en la grilla de módulos, en las tablas y en los badges, y para
+     que el modo oscuro no quede con colores quemados. */
+  --estado-libre: oklch(0.55 0.13 155);
+  --estado-libre-bg: oklch(0.97 0.03 155);
+  --estado-libre-borde: oklch(0.85 0.08 155);
+
+  --estado-ocupado: oklch(0.52 0.19 25);
+  --estado-ocupado-bg: oklch(0.96 0.03 25);
+  --estado-ocupado-borde: oklch(0.82 0.11 25);
+
+  --estado-pendiente: oklch(0.58 0.15 65);
+  --estado-pendiente-bg: oklch(0.97 0.04 75);
+  --estado-pendiente-borde: oklch(0.84 0.11 70);
+
+  --estado-pasado: oklch(0.55 0.01 142);
+  --estado-pasado-bg: oklch(0.96 0.002 142);
+  --estado-pasado-borde: oklch(0.89 0.004 142);
 }
 
 .dark {
@@ -73,6 +94,24 @@
   --sidebar-accent-foreground: oklch(0.08 0 0); /* #1a1a1a */
   --sidebar-border: oklch(0.2 0 0); /* #374151 */
   --sidebar-ring: oklch(0.6 0.15 180 / 0.5); /* rgba(20, 184, 166, 0.5) */
+
+  /* En oscuro se sube la luminosidad del texto y se bajan los fondos, para
+     mantener el contraste sin que los estados griten. */
+  --estado-libre: oklch(0.78 0.14 155);
+  --estado-libre-bg: oklch(0.22 0.05 155);
+  --estado-libre-borde: oklch(0.38 0.08 155);
+
+  --estado-ocupado: oklch(0.75 0.16 25);
+  --estado-ocupado-bg: oklch(0.24 0.06 25);
+  --estado-ocupado-borde: oklch(0.4 0.1 25);
+
+  --estado-pendiente: oklch(0.8 0.14 70);
+  --estado-pendiente-bg: oklch(0.24 0.05 70);
+  --estado-pendiente-borde: oklch(0.4 0.09 70);
+
+  --estado-pasado: oklch(0.6 0.01 142);
+  --estado-pasado-bg: oklch(0.17 0.003 142);
+  --estado-pasado-borde: oklch(0.28 0.005 142);
 }
 
 @theme inline {
@@ -114,6 +153,19 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: var(--font-geist);
   --font-serif: var(--font-manrope);
+
+  --color-estado-libre: var(--estado-libre);
+  --color-estado-libre-bg: var(--estado-libre-bg);
+  --color-estado-libre-borde: var(--estado-libre-borde);
+  --color-estado-ocupado: var(--estado-ocupado);
+  --color-estado-ocupado-bg: var(--estado-ocupado-bg);
+  --color-estado-ocupado-borde: var(--estado-ocupado-borde);
+  --color-estado-pendiente: var(--estado-pendiente);
+  --color-estado-pendiente-bg: var(--estado-pendiente-bg);
+  --color-estado-pendiente-borde: var(--estado-pendiente-borde);
+  --color-estado-pasado: var(--estado-pasado);
+  --color-estado-pasado-bg: var(--estado-pasado-bg);
+  --color-estado-pasado-borde: var(--estado-pasado-borde);
 }
 
 @layer base {
