@@ -43,6 +43,8 @@ import UserNavigation from "@/components/user-navigation";
 import { useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 function ReservasEscolaresPageContent() {
   const { user, isAdmin } = useAuth()
@@ -60,6 +62,7 @@ function ReservasEscolaresPageContent() {
   const [modalEditar, setModalEditar] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState<Date | null>(null); // Add state for date filter
+  const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -87,8 +90,10 @@ function ReservasEscolaresPageContent() {
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
-        // Don't show alert anymore since controllers handle errors gracefully
         console.warn('Some data could not be loaded. The system will work with available data.');
+        toast.error('No se pudieron cargar todos los datos. Probá recargar la página.');
+      } finally {
+        setCargando(false);
       }
     };
 
@@ -165,9 +170,10 @@ function ReservasEscolaresPageContent() {
       const reservasActualizadas = await obtenerReservas();
       setReservas(reservasActualizadas);
       setDialogNuevaReserva(false)
+      toast.success('Reserva creada correctamente')
     } catch (error) {
       console.error('Error creating reservation:', error);
-      alert('Error al crear la reserva. Por favor, inténtalo de nuevo.');
+      toast.error('Error al crear la reserva. Por favor, inténtalo de nuevo.');
     }
   }
 
@@ -180,9 +186,10 @@ function ReservasEscolaresPageContent() {
         await handleCrearReserva(primeraReserva);
       }
       setDialogNuevaReserva(false)
+      toast.success('Reservas recurrentes creadas correctamente')
     } catch (error) {
       console.error('Error creating recurring reservations:', error);
-      alert('Error al crear las reservas recurrentes. Por favor, inténtalo de nuevo.');
+      toast.error('Error al crear las reservas recurrentes. Por favor, inténtalo de nuevo.');
     }
   }
 
@@ -250,9 +257,10 @@ function ReservasEscolaresPageContent() {
       setReservas(reservas.map((r) => (r.id === reservaEditada.id ? reservaActualizada : r)))
       setModalEditar(false)
       setReservaSeleccionada(null)
+      toast.success('Reserva editada correctamente')
     } catch (error) {
       console.error('Error updating reservation:', error);
-      alert('Error al actualizar la reserva. Por favor, inténtalo de nuevo.');
+      toast.error('Error al actualizar la reserva. Por favor, inténtalo de nuevo.');
     }
   }
 
@@ -270,15 +278,14 @@ function ReservasEscolaresPageContent() {
       setReservas(reservas.filter((r) => r.id !== reserva.id))
       setModalCancelar(false)
       setReservaSeleccionada(null)
-      
-      console.log('🔄 UI state updated successfully');
+      toast.success('Reserva cancelada correctamente')
     } catch (error) {
       console.error('💥 Error cancelling reservation:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('failed to fetch') || errorMessage.toLowerCase().includes('networkerror')) ) {
-        alert('Error de red: no se pudo contactar al backend. Asegúrate de que el servidor backend esté ejecutándose en http://localhost:3000 y vuelve a intentarlo.');
+        toast.error('Error de red: no se pudo contactar al backend. Asegúrate de que el servidor backend esté ejecutándose y vuelve a intentarlo.');
       } else {
-        alert(`Error al cancelar la reserva: ${errorMessage}. Por favor, inténtalo de nuevo.`);
+        toast.error(`Error al cancelar la reserva: ${errorMessage}. Por favor, inténtalo de nuevo.`);
       }
     }
   }
@@ -363,9 +370,10 @@ function ReservasEscolaresPageContent() {
       
       setModalCancelar(false)
       setReservaSeleccionada(null)
+      toast.success('Serie de reservas cancelada correctamente')
     } catch (error) {
       console.error('Error cancelling reservation series:', error);
-      alert(`Error al cancelar la serie de reservas: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      toast.error(`Error al cancelar la serie de reservas: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 
@@ -380,10 +388,38 @@ function ReservasEscolaresPageContent() {
       setReservas(reservasActualizadas)
       setModalCancelar(false)
       setReservaSeleccionada(null)
+      toast.success('Serie cancelada correctamente')
     } catch (error) {
       console.error('Error cancelling series by id:', error)
-      alert(`Error al cancelar la serie: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+      toast.error(`Error al cancelar la serie: ${error instanceof Error ? error.message : 'Error desconocido'}`)
     }
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Skeleton className="h-7 w-56" />
+                <Skeleton className="h-4 w-40 mt-2" />
+              </div>
+              <Skeleton className="h-9 w-32" />
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-6 py-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-96 w-full rounded-xl" />
+        </div>
+      </div>
+    )
   }
 
   return (

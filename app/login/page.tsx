@@ -18,18 +18,17 @@ export default function LoginPage() {
   
   const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
+  const role = user?.role;
 
-  // Redirigir si ya está autenticado
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      // Redirigir según el rol del usuario
-      if (user?.role === 'ADMIN') {
-        router.push('/'); // Dashboard admin
+      if (role === 'ADMIN') {
+        router.push('/');
       } else {
-        router.push('/reservas'); // Vista de reservas para docentes
+        router.push('/reservas');
       }
     }
-  }, [isAuthenticated, authLoading, user, router]);
+  }, [isAuthenticated, authLoading, role, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

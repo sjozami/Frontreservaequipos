@@ -12,11 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, AlertTriangle } from "lucide-react";
 import { MODULOS_HORARIOS } from "@/lib/constants";
 import { formatearHorarioModulos, verificarDisponibilidadModulos } from "@/lib/reservas-utils";
+import { useModulosOcupados } from "@/hooks/use-reservas";
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types";
 import React from "react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface EditarReservaModalProps {
   reserva: ReservaEscolar | null;
@@ -41,6 +43,23 @@ export function EditarReservaModal({
   const [modulosSeleccionados, setModulosSeleccionados] = useState<number[]>([]);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>();
   const [conflictos, setConflictos] = useState<number[]>([])
+  const [guardando, setGuardando] = useState(false)
+
+  // Consulta de módulos ocupados contra el backend (evita reservas solapadas con datos desactualizados)
+  const { getModulosOcupadosParaEquipoYFecha } = useModulosOcupados(fechaSeleccionada, formData.equipoId)
+
+  // Función helper para normalizar fechas y evitar problemas de zona horaria
+  const normalizarFecha = (fecha: Date | string): Date => {
+    if (typeof fecha === 'string') {
+      // Si viene como string ISO (ej: "2025-10-14T00:00:00.000Z")
+      // Extraer solo la parte de la fecha y crear una fecha local
+      const fechaStr = fecha.split('T')[0] // "2025-10-14"
+      const [year, month, day] = fechaStr.split('-').map(Number)
+      return new Date(year, month - 1, day) // month - 1 porque Date usa índices 0-11
+    } else {
+      return fecha
+    }
+  }
 
   useEffect(() => {
     if (reserva) {
@@ -51,23 +70,34 @@ export function EditarReservaModal({
         estado: reserva.estado,
       })
       setModulosSeleccionados(reserva.modulos)
-      setFechaSeleccionada(typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha)
+      
+      // Normalizar la fecha para evitar problemas de zona horaria
+      const fechaNormalizada = normalizarFecha(reserva.fecha)
+      setFechaSeleccionada(fechaNormalizada)
     }
   }, [reserva])
 
   useEffect(() => {
-    if (fechaSeleccionada && formData.equipoId && modulosSeleccionados.length > 0) {
-      // Excluir la reserva actual de la verificación
-      const reservasFiltradas = reservasExistentes.filter((r) => r.id !== reserva?.id)
-      const disponibilidad = verificarDisponibilidadModulos(
-        formData.equipoId,
-        fechaSeleccionada,
-        modulosSeleccionados,
-        reservasFiltradas,
+    // setConflictos siempre recibiría un array nuevo, así que solo actualizamos si
+    // el contenido cambió: si no, cada render dispararía otro render.
+    const aplicar = (siguiente: number[]) =>
+      setConflictos((prev) =>
+        prev.length === siguiente.length && prev.every((m, i) => m === siguiente[i]) ? prev : siguiente
       )
-      setConflictos(disponibilidad.modulosOcupados)
+
+    if (fechaSeleccionada && formData.equipoId) {
+      // Ocupados según backend (incluye la reserva actual); excluimos los módulos
+      // que ya pertenecen a esta reserva para que sigan disponibles al editar.
+      const ocupadosBackend = new Set(getModulosOcupadosParaEquipoYFecha(formData.equipoId, fechaSeleccionada))
+      const misModulos = new Set(reserva?.modulos ?? [])
+      ocupadosBackend.forEach((m) => {
+        if (misModulos.has(m)) ocupadosBackend.delete(m)
+      })
+      aplicar([...ocupadosBackend].sort((a, b) => a - b))
+    } else {
+      aplicar([])
     }
-  }, [fechaSeleccionada, formData.equipoId, modulosSeleccionados, reservasExistentes, reserva?.id])
+  }, [fechaSeleccionada, formData.equipoId, reserva, getModulosOcupadosParaEquipoYFecha])
 
   const handleModuloToggle = (modulo: number) => {
     setModulosSeleccionados((prev) =>
@@ -75,11 +105,13 @@ export function EditarReservaModal({
     )
   }
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (!reserva || !fechaSeleccionada || !formData.docenteId || !formData.equipoId) return
 
-    if (conflictos.length > 0) {
-      alert("No se puede guardar la reserva porque hay conflictos de horario.")
+    const conflictosReales = modulosSeleccionados.filter(modulo => conflictos.includes(modulo))
+
+    if (conflictosReales.length > 0) {
+      toast.error(`No se puede guardar: los módulos ${conflictosReales.join(", ")} están ocupados por otras reservas.`)
       return
     }
 
@@ -93,8 +125,16 @@ export function EditarReservaModal({
       estado: formData.estado || "pendiente",
     }
 
-    onGuardar(reservaEditada)
-    onOpenChange(false)
+    setGuardando(true)
+    try {
+      await onGuardar(reservaEditada)
+      onOpenChange(false)
+    } catch (err) {
+      console.error(err)
+      toast.error("No se pudo guardar la reserva editada")
+    } finally {
+      setGuardando(false)
+    }
   }
 
   if (!reserva) return null;
@@ -195,35 +235,56 @@ export function EditarReservaModal({
               {MODULOS_HORARIOS.map((modulo) => {
                 const estaSeleccionado = modulosSeleccionados.includes(modulo.numero)
                 const tieneConflicto = conflictos.includes(modulo.numero)
+                const modulosOriginales = reserva?.modulos || []
+                const eraOriginal = modulosOriginales.includes(modulo.numero)
+
+                // Determinar el estado visual del botón
+                let variant: "default" | "outline" | "secondary" = "outline"
+                let className = "flex flex-col h-auto py-2"
+                let disabled = false
+
+                if (estaSeleccionado) {
+                  variant = "default"
+                } else if (tieneConflicto) {
+                  // Módulo ocupado por otra reserva - no seleccionable
+                  className += " border-red-500 bg-red-50 text-red-700 hover:bg-red-100 cursor-not-allowed"
+                  disabled = true
+                }
 
                 return (
                   <Button
                     key={modulo.numero}
-                    variant={estaSeleccionado ? "default" : "outline"}
+                    variant={variant}
                     size="sm"
-                    className={cn(
-                      "flex flex-col h-auto py-2",
-                      tieneConflicto && "border-red-500 bg-red-50 text-red-700 hover:bg-red-100",
-                    )}
+                    className={cn(className)}
                     onClick={() => handleModuloToggle(modulo.numero)}
-                    disabled={tieneConflicto && !estaSeleccionado}
+                    disabled={disabled}
+                    title={
+                      tieneConflicto 
+                        ? "Este módulo está ocupado por otra reserva" 
+                        : estaSeleccionado 
+                          ? "Clic para deseleccionar" 
+                          : "Clic para seleccionar"
+                    }
                   >
                     <span className="font-medium">Módulo {modulo.numero}</span>
                     <span className="text-xs">{modulo.horaInicio} - {modulo.horaFin}</span>
-                    {tieneConflicto && <AlertTriangle className="w-3 h-3 mt-1" />}
+                    {tieneConflicto && !estaSeleccionado && <AlertTriangle className="w-3 h-3 mt-1" />}
+                    {eraOriginal && estaSeleccionado && <span className="text-xs opacity-75">(original)</span>}
                   </Button>
                 )
               })}
             </div>
 
             {conflictos.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <div className="flex items-center gap-2 text-red-800">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <div className="flex items-center gap-2 text-yellow-800">
                   <AlertTriangle className="w-4 h-4" />
-                  <span className="font-medium">Conflictos detectados</span>
+                  <span className="font-medium">Módulos no disponibles</span>
                 </div>
-                <p className="text-sm text-red-700 mt-1">
-                  Los módulos {conflictos.join(", ")} ya están reservados para este equipo en la fecha seleccionada.
+                <p className="text-sm text-yellow-700 mt-1">
+                  Los módulos {conflictos.join(", ")} están ocupados por otras reservas y no se pueden seleccionar.
+                  Puedes mantener los módulos que ya tenías reservados y agregar otros módulos disponibles.
                 </p>
               </div>
             )}
@@ -293,14 +354,16 @@ export function EditarReservaModal({
           <Button
             onClick={handleGuardar}
             disabled={
+              guardando ||
               !fechaSeleccionada ||
               !formData.docenteId ||
               !formData.equipoId ||
               modulosSeleccionados.length === 0 ||
-              conflictos.length > 0
+              // Solo deshabilitar si hay módulos seleccionados que están en conflicto
+              modulosSeleccionados.some(modulo => conflictos.includes(modulo))
             }
           >
-            Guardar Cambios
+            {guardando ? "Guardando…" : "Guardar Cambios"}
           </Button>
         </div>
       </DialogContent>

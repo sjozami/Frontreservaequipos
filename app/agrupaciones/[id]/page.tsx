@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Edit, Trash2 } from "lucide-react"
 import { FormularioAgrupacion } from "@/components/formulario-agrupacion"
 import { ConfirmacionEliminar } from "@/components/confirmacion-eliminar"
-import { GestionReservasAgrupacion } from "@/components/gestion-reservas-agrupacion"
 import { agruparReservas, calcularEstadisticasAgrupacion } from "@/lib/reservas-utils"
 import type { AgrupacionReserva, ReservaIndividual } from "@/lib/types"
 import Link from "next/link"
@@ -188,12 +187,17 @@ export default function DetalleAgrupacionPage({ params }: PageProps) {
         </Card>
 
         {/* Gestión de reservas */}
-        <GestionReservasAgrupacion
-          agrupacion={agrupacion}
-          reservasDisponibles={[]}
-          onActualizarAgrupacion={handleActualizarAgrupacion}
-          onEditarReserva={handleEditarReserva}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Reservas de la agrupación</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              La gestión detallada de reservas dentro de una agrupación estará disponible próximamente.
+              Mientras tanto, podés editar o eliminar la agrupación desde los botones superiores.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Dialog de confirmación para eliminar */}

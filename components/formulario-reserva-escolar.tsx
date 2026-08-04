@@ -18,6 +18,7 @@ import { MODULOS_HORARIOS } from "@/lib/constants"
 import { verificarDisponibilidadModulos, formatearHorarioModulos } from "@/lib/reservas-utils"
 import { useModulosOcupados } from "@/hooks/use-reservas"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 
 
 const obtenerModuloActual = (): number => {
@@ -29,12 +30,12 @@ const obtenerModuloActual = (): number => {
   // Si es antes de las 8:00, devolver módulo 1
   if (minutosDesdeInicio < 0) return 1
 
-  // Si es después de las 18:00, devolver módulo 15
-  if (minutosDesdeInicio >= 600) return 15
+  // Si es después de las 18:40, devolver módulo 16
+  if (minutosDesdeInicio >= 640) return 16
 
   // Calcular módulo actual (cada módulo son 40 minutos)
   const moduloActual = Math.floor(minutosDesdeInicio / 40) + 1
-  return Math.min(moduloActual, 15)
+  return Math.min(moduloActual, 16)
 }
 
 interface FormularioReservaEscolarProps {
@@ -78,6 +79,7 @@ export function FormularioReservaEscolar({
   const [fechasGeneradas, setFechasGeneradas] = useState<Date[]>([])
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [reservasParaValidacion, setReservasParaValidacion] = useState<ReservaEscolar[]>(reservasExistentes)
+  const [guardando, setGuardando] = useState(false)
 
   // Hook para obtener módulos ocupados desde el backend (solo para docentes)
   const { isModuloOcupado, loading: loadingModulosOcupados } = useModulosOcupados(
@@ -209,8 +211,8 @@ export function FormularioReservaEscolar({
 
   const handleGuardar = async () => {
     if (!validarFormulario() || !fecha) return;
+    setGuardando(true);
 
-    console.log("[v0] Guardando reserva:", { esRecurrente, fechasGeneradas: fechasGeneradas.length });
 
     try {
       const now = new Date()
@@ -234,7 +236,6 @@ export function FormularioReservaEscolar({
           updatedAt: now,
         }));
 
-        console.log("[v0] Creando reservas recurrentes:", reservasRecurrentes.length);
         await onCrearReservasRecurrentes(reservasRecurrentes);
       } else if (onCrearReserva) {
         const nuevaReserva = {
@@ -250,7 +251,6 @@ export function FormularioReservaEscolar({
           updatedAt: now,
         };
 
-        console.log("[v0] Creando reserva individual - Fecha seleccionada:", fecha?.toISOString());
         await onCrearReserva(nuevaReserva);
       }
       
@@ -258,7 +258,9 @@ export function FormularioReservaEscolar({
       limpiarFormulario();
     } catch (error) {
       console.error('Error al guardar reserva:', error);
-      alert('Error al guardar la reserva. Por favor, inténtalo de nuevo.');
+      toast.error('Error al guardar la reserva. Por favor, inténtalo de nuevo.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -278,7 +280,7 @@ export function FormularioReservaEscolar({
         setDocentes(docentesData);
       } catch (error) {
         console.error('Error fetching data:', error);
-        alert('Error al cargar los datos. Por favor, recarga la página.');
+        toast.error('Error al cargar los datos. Por favor, recarga la página.');
       }
     };
 
@@ -318,25 +320,13 @@ export function FormularioReservaEscolar({
     if (isDocente()) {
       const ocupadoEnBackend = isModuloOcupado(equipoId, fecha, modulo)
       if (ocupadoEnBackend) {
-        console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado en backend para docente`);
         return { disponible: false, razon: "Ocupado" }
       }
     }
 
     // Then check local reservations for validation
     const disponibilidad = verificarDisponibilidadModulos(equipoId, fecha, [modulo], reservasParaValidacion)
-    
-    // Debug log
-    if (!disponibilidad.disponible) {
-      console.log(`[getDisponibilidadModulo] Módulo ${modulo} ocupado localmente:`, {
-        equipoId,
-        fecha: fecha.toISOString(),
-        reservasParaValidacion: reservasParaValidacion.length,
-        modulosOcupados: disponibilidad.modulosOcupados,
-        isDocente: isDocente()
-      });
-    }
-    
+
     return {
       disponible: disponibilidad.disponible,
       razon: disponibilidad.disponible ? undefined : "Ocupado",
@@ -361,13 +351,11 @@ export function FormularioReservaEscolar({
           const desde = startOfDay(fecha)
           const hasta = endOfDay(fechaHasta)
           const resultados = await obtenerReservas({ equipoId, desde, hasta })
-          console.log(`[fetchReservasParaValidacion] Recurrente - Equipo: ${equipoId}, Fecha: ${fecha.toISOString()}, Reservas encontradas: ${resultados.length}`);
           setReservasParaValidacion(resultados)
         } else if (fecha) {
           const desde = startOfDay(fecha)
           const hasta = endOfDay(fecha)
           const resultados = await obtenerReservas({ equipoId, desde, hasta })
-          console.log(`[fetchReservasParaValidacion] Individual - Equipo: ${equipoId}, Fecha: ${fecha.toISOString()}, Reservas encontradas: ${resultados.length}`);
           setReservasParaValidacion(resultados)
         } else {
           setReservasParaValidacion(reservasExistentes || [])
@@ -470,11 +458,9 @@ export function FormularioReservaEscolar({
                       mode="single"
                       selected={fecha}
                       onSelect={(date) => {
-                        console.log("[Calendar] Fecha seleccionada del calendario:", date, "ISO:", date?.toISOString());
                         // Normalize to local midnight to avoid timezone issues
                         if (date) {
                           const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                          console.log("[Calendar] Fecha normalizada a medianoche local:", localMidnight, "ISO:", localMidnight.toISOString());
                           setFecha(localMidnight);
                         } else {
                           setFecha(date);
@@ -634,7 +620,7 @@ export function FormularioReservaEscolar({
                 )}
               </CardTitle>
               <CardDescription>
-                Selecciona los módulos de 40 minutos (8:00 - 18:00) • {modulosSeleccionados.length} seleccionados
+                Selecciona los módulos de 40 minutos (8:00 - 18:40) • {modulosSeleccionados.length} seleccionados
                 {isDocente() && equipoId && fecha && (
                   <span className="block text-blue-600 mt-1">
                     ℹ️ Los módulos ocupados se muestran automáticamente desde el servidor
@@ -811,13 +797,17 @@ export function FormularioReservaEscolar({
 
       {/* Botones de acción */}
       <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onCancelar}>
+        <Button variant="outline" onClick={onCancelar} disabled={guardando}>
           <X className="w-4 h-4 mr-2" />
           Cancelar
         </Button>
-        <Button onClick={handleGuardar}>
+        <Button onClick={handleGuardar} disabled={guardando}>
           <Save className="w-4 h-4 mr-2" />
-          {esRecurrente ? `Crear ${fechasGeneradas.length} Reservas` : "Crear Reserva"}
+          {guardando
+            ? "Guardando…"
+            : esRecurrente
+              ? `Crear ${fechasGeneradas.length} Reservas`
+              : "Crear Reserva"}
         </Button>
       </div>
     </div>

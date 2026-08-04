@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Loader2, Shield, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -22,51 +22,42 @@ export default function ProtectedRoute({
   allowRoles,
   fallbackPath = '/login'
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user, isAdmin, isDocente } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const redirectingRef = useRef(false);
 
   useEffect(() => {
-    if (isLoading) {
-      return; // Esperar mientras se carga
-    }
+    if (isLoading) return;
 
     if (!isAuthenticated) {
       router.push(fallbackPath);
       return;
     }
 
-    // Verificar autorización basada en roles
+    const role = user?.role;
     let authorized = false;
 
     if (allowRoles) {
-      // Si se especifican roles permitidos, verificar si el usuario tiene uno de ellos
-      authorized = allowRoles.includes(user?.role || 'DOCENTE');
+      authorized = allowRoles.includes(role || 'DOCENTE');
     } else if (requireAdmin) {
-      // Si se requiere admin específicamente
-      authorized = isAdmin();
+      authorized = role === 'ADMIN';
     } else if (requireDocente) {
-      // Si se requiere docente específicamente (admin también puede acceder)
-      authorized = isDocente() || isAdmin();
+      authorized = role === 'DOCENTE' || role === 'ADMIN';
     } else {
-      // Si no se especifican restricciones, cualquier usuario autenticado puede acceder
       authorized = true;
     }
 
-    setIsAuthorized(authorized);
-
-    if (!authorized) {
-      // Si no está autorizado, redirigir según el rol
-      if (isAdmin()) {
-        router.push('/'); // Dashboard admin
+    if (!authorized && !redirectingRef.current) {
+      redirectingRef.current = true;
+      if (role === 'ADMIN') {
+        router.push('/');
       } else {
-        router.push('/reservas'); // Vista por defecto para docentes
+        router.push('/reservas');
       }
     }
-  }, [isAuthenticated, isLoading, user, requireAdmin, requireDocente, allowRoles, router, isAdmin, isDocente, fallbackPath]);
+  }, [isAuthenticated, isLoading, user?.role, requireAdmin, requireDocente, allowRoles, router, fallbackPath]);
 
-  // Mostrar loading mientras se verifica autenticación
-  if (isLoading || isAuthorized === null) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
@@ -77,75 +68,60 @@ export default function ProtectedRoute({
     );
   }
 
-  // Si no está autenticado, no mostrar nada (se redirige)
   if (!isAuthenticated) {
     return null;
   }
 
-  // Si no está autorizado, mostrar mensaje de acceso denegado
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md border-red-200">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="h-8 w-8 text-red-600" />
-            </div>
-            <CardTitle className="text-red-800">Acceso Denegado</CardTitle>
-            <CardDescription>
-              No tienes permisos para acceder a esta página
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-sm text-gray-600">
-              Tu rol actual: <span className="font-medium">{user?.role}</span>
-            </p>
-            <div className="space-y-2">
-              <Button 
-                onClick={() => router.push(isAdmin() ? '/' : '/reservas')}
-                className="w-full"
-              >
-                Ir al Panel Principal
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => router.back()}
-                className="w-full"
-              >
-                Volver Atrás
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  const role = user?.role;
+
+  if (allowRoles) {
+    if (!allowRoles.includes(role || 'DOCENTE')) {
+      return <AccessDenied role={role} isAdmin={role === 'ADMIN'} />;
+    }
+  } else if (requireAdmin && role !== 'ADMIN') {
+    return <AccessDenied role={role} isAdmin={false} />;
+  } else if (requireDocente && role !== 'DOCENTE' && role !== 'ADMIN') {
+    return <AccessDenied role={role} isAdmin={role === 'ADMIN'} />;
   }
 
-  // Si todo está bien, mostrar el contenido
   return <>{children}</>;
 }
 
-// Componentes específicos para diferentes tipos de protección
-export function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
+function AccessDenied({ role, isAdmin }: { role?: string; isAdmin: boolean }) {
+  const router = useRouter();
   return (
-    <ProtectedRoute requireAdmin={true}>
-      {children}
-    </ProtectedRoute>
-  );
-}
-
-export function DocenteRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute requireDocente={true}>
-      {children}
-    </ProtectedRoute>
-  );
-}
-
-export function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute>
-      {children}
-    </ProtectedRoute>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <Card className="w-full max-w-md border-red-200">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+          <CardTitle className="text-red-800">Acceso Denegado</CardTitle>
+          <CardDescription>
+            No tienes permisos para acceder a esta página
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <p className="text-sm text-gray-600">
+            Tu rol actual: <span className="font-medium">{role}</span>
+          </p>
+          <div className="space-y-2">
+            <Button
+              onClick={() => router.push(isAdmin ? '/' : '/reservas')}
+              className="w-full"
+            >
+              Ir al Panel Principal
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.back()}
+              className="w-full"
+            >
+              Volver Atrás
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types"
+import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatearHorarioModulos } from "@/lib/reservas-utils"
@@ -21,6 +22,12 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
   const [sortBy, setSortBy] = useState<"fecha" | "equipo" | "docente" | "estado">("fecha")
   const [dir, setDir] = useState<"asc" | "desc">("asc")
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
+  // Reset de página cuando cambia el conjunto de datos (filtros, búsqueda, etc.)
+  const totalReservas = reservas.length
+  React.useEffect(() => {
+    setPage(1)
+  }, [totalReservas])
 
   const sorted = useMemo(() => {
     const copy = [...reservas]
@@ -51,6 +58,9 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize))
   const pageData = sorted.slice((page - 1) * pageSize, page * pageSize)
+  const sortIcon = (col: typeof sortBy) => (sortBy === col ? (dir === 'asc' ? ' ▲' : ' ▼') : '')
+  const ariaSort = (col: typeof sortBy) =>
+    sortBy === col ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'
 
   // Build groups: series grouped by grupoRecurrenteId, and singles
   const seriesGroups = useMemo(() => {
@@ -81,15 +91,27 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
         <table className="w-full text-left table-auto">
           <thead>
             <tr className="text-sm text-muted-foreground">
-              <th className="p-2 cursor-pointer" onClick={() => toggleSort('fecha')}>Fecha ▾</th>
-              <th className="p-2 cursor-pointer" onClick={() => toggleSort('equipo')}>Equipo</th>
-              <th className="p-2 cursor-pointer" onClick={() => toggleSort('docente')}>Docente</th>
+              <th className="p-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('fecha')} aria-sort={ariaSort('fecha')}>Fecha{sortIcon('fecha')}</th>
+              <th className="p-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('equipo')} aria-sort={ariaSort('equipo')}>Equipo{sortIcon('equipo')}</th>
+              <th className="p-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('docente')} aria-sort={ariaSort('docente')}>Docente{sortIcon('docente')}</th>
               <th className="p-2">Horario</th>
-              <th className="p-2 cursor-pointer" onClick={() => toggleSort('estado')}>Estado</th>
+              <th className="p-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('estado')} aria-sort={ariaSort('estado')}>Estado{sortIcon('estado')}</th>
               <th className="p-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <Calendar className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="font-medium">No se encontraron reservas</p>
+                    <p className="text-sm">Ajustá los filtros o creá una nueva reserva.</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+
             {Array.from(seriesGroups.entries()).map(([gid, reservasGrupo]) => {
               const primera = reservasGrupo[0]
               const docente = docentes.find((d) => d.id === primera.docenteId)

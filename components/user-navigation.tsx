@@ -13,11 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  User, 
-  LogOut, 
-  Settings, 
-  Shield, 
+import {
+  LogOut,
+  Shield,
   BookOpen,
   Calendar,
   Users,
@@ -177,14 +175,6 @@ export default function UserNavigation() {
             <DropdownMenuSeparator />
           </div>
 
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            <span>Perfil</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Configuración</span>
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout} className="text-red-600">
             <LogOut className="mr-2 h-4 w-4" />

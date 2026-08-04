@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { obtenerModulosOcupados } from '@/lib/reservaController';
 import type { ModuloOcupado } from '@/lib/types';
 
@@ -39,7 +39,10 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
   /**
    * Verifica si un módulo específico está ocupado
    */
-  const isModuloOcupado = (equipoId: string, fecha: Date, modulo: number): boolean => {
+  // useCallback en las tres helpers: se pasan como dependencia de efectos en los
+  // formularios/modales. Sin identidad estable el efecto corre en cada render y,
+  // si además hace setState, entra en loop ("Maximum update depth exceeded").
+  const isModuloOcupado = useCallback((equipoId: string, fecha: Date, modulo: number): boolean => {
     const fechaStr = fecha.toISOString().split('T')[0]; // "2025-10-07"
     
     const ocupado = modulosOcupados.some(
@@ -66,12 +69,12 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
     }
     
     return ocupado;
-  };
+  }, [modulosOcupados]);
 
   /**
    * Obtiene los módulos ocupados para un equipo y fecha específicos
    */
-  const getModulosOcupadosParaEquipoYFecha = (equipoId: string, fecha: Date): number[] => {
+  const getModulosOcupadosParaEquipoYFecha = useCallback((equipoId: string, fecha: Date): number[] => {
     const fechaStr = fecha.toISOString().split('T')[0];
     
     // Collect all modules from all reservations for this equipment and date
@@ -85,15 +88,15 @@ export function useModulosOcupados(fecha?: Date, equipoId?: string) {
     
     // Remove duplicates and sort
     return [...new Set(modulosOcupadosArray)].sort((a, b) => a - b);
-  };
+  }, [modulosOcupados]);
 
   /**
    * Verifica si hay conflictos con una selección de módulos
    */
-  const tieneConflictos = (equipoId: string, fecha: Date, modulosSeleccionados: number[]): boolean => {
+  const tieneConflictos = useCallback((equipoId: string, fecha: Date, modulosSeleccionados: number[]): boolean => {
     const modulosOcupadosEquipo = getModulosOcupadosParaEquipoYFecha(equipoId, fecha);
     return modulosSeleccionados.some(modulo => modulosOcupadosEquipo.includes(modulo));
-  };
+  }, [getModulosOcupadosParaEquipoYFecha]);
 
   return {
     modulosOcupados,

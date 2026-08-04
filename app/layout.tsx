@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Manrope } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
+import { Toaster } from "@/components/ui/sonner"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthProvider>
           {children}
+          <Toaster position="top-right" richColors closeButton />
         </AuthProvider>
       </body>
     </html>
