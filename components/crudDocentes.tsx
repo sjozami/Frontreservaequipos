@@ -168,8 +168,12 @@ export function CrudDocentes() {
       resetForm()
       setOpen(false)
     } catch (err) {
+      // Mostrar el motivo real del servidor (por ejemplo "El username o email ya
+      // existe"): con un mensaje genérico no hay forma de saber qué corregir.
       console.error(err)
-      toast.error("Ocurrió un error al guardar el docente")
+      const motivo = err instanceof Error ? err.message : "Ocurrió un error al guardar el docente"
+      setErrorForm(motivo)
+      toast.error(motivo)
     } finally {
       setGuardando(false)
     }
@@ -394,12 +398,19 @@ export function CrudDocentes() {
           {docentesFiltrados.map((docente) => (
             <div key={docente.id} className="border rounded-lg p-4 shadow-sm flex justify-between items-center">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold">{docente.nombre} {docente.apellido}</p>
-                  {docente.usuario && (
-                    <span className="flex items-center gap-1 text-xs text-blue-600">
-                      <User className="w-3 h-3" />
+                  {docente.usuario ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      <User className="w-3 h-3" aria-hidden="true" />
                       {docente.usuario.role}
+                    </span>
+                  ) : (
+                    // Sin usuario no puede iniciar sesión: conviene que el admin lo vea
+                    // de un vistazo, no solo por la ausencia de la línea "Usuario:".
+                    <span className="inline-flex items-center gap-1 rounded-full border border-estado-pendiente-borde bg-estado-pendiente-bg px-2 py-0.5 text-xs font-medium text-estado-pendiente">
+                      <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                      Sin acceso
                     </span>
                   )}
                 </div>
@@ -409,13 +420,28 @@ export function CrudDocentes() {
                     Usuario: {docente.usuario.username} ({docente.usuario.email})
                   </p>
                 )}
+                {!docente.usuario && isAdmin() && (
+                  <p className="text-xs text-muted-foreground">
+                    No puede iniciar sesión. Editalo y marcá “Crear usuario” para darle acceso.
+                  </p>
+                )}
                 {docente.observaciones && <p className="text-xs text-muted-foreground italic mt-1">“{docente.observaciones}”</p>}
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => handleEditar(docente)}>
-                  <Pencil className="w-4 h-4" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEditar(docente)}
+                  aria-label={`Editar ${docente.nombre} ${docente.apellido}`}
+                >
+                  <Pencil className="w-4 h-4" aria-hidden="true" />
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => setEliminandoId(docente.id)} aria-label="Eliminar docente">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setEliminandoId(docente.id)}
+                  aria-label={`Eliminar ${docente.nombre} ${docente.apellido}`}
+                >
                   <Trash className="w-4 h-4" />
                 </Button>
               </div>

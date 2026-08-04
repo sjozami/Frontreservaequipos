@@ -96,7 +96,9 @@ export function CrudEquipos() {
       setOpen(false)
     } catch (err) {
       console.error(err)
-      toast.error("Ocurrió un error al guardar el equipo")
+      const motivo = err instanceof Error ? err.message : "Ocurrió un error al guardar el equipo"
+      setErrorForm(motivo)
+      toast.error(motivo)
     } finally {
       setGuardando(false)
     }
@@ -124,7 +126,7 @@ export function CrudEquipos() {
       toast.success("Equipo eliminado correctamente")
     } catch (err) {
       console.error(err)
-      toast.error("Ocurrió un error al eliminar el equipo")
+      toast.error(err instanceof Error ? err.message : "Ocurrió un error al eliminar el equipo")
     } finally {
       setEliminandoId(null)
     }
@@ -280,8 +282,13 @@ export function CrudEquipos() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => handleEditar(equipo)}>
-                  <Pencil className="w-4 h-4" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEditar(equipo)}
+                  aria-label={`Editar ${equipo.nombre}`}
+                >
+                  <Pencil className="w-4 h-4" aria-hidden="true" />
                 </Button>
                 <Button
                   size="sm"

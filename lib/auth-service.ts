@@ -121,7 +121,7 @@ class AuthService {
         this.saveAuthData(data.accessToken, data.refreshToken, data.user);
         return { data };
       } else {
-        return { error: data.message || 'Error de autenticación' };
+        return { error: data.error || data.message || 'Error de autenticación' };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -174,7 +174,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Token inválido' };
+        return { error: data.error || data.message || 'Token inválido' };
       }
     } catch (error) {
       console.error('Token validation error:', error);
@@ -206,7 +206,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Error al registrar usuario' };
+        return { error: data.error || data.message || 'Error al registrar usuario' };
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -281,7 +281,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Error en la petición' };
+        return { error: data.error || data.message || 'Error en la petición' };
       }
     } catch (error) {
       console.error('GET request error:', error);
@@ -302,7 +302,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Error en la petición' };
+        return { error: data.error || data.message || 'Error en la petición' };
       }
     } catch (error) {
       console.error('POST request error:', error);
@@ -323,7 +323,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Error en la petición' };
+        return { error: data.error || data.message || 'Error en la petición' };
       }
     } catch (error) {
       console.error('PUT request error:', error);
@@ -343,7 +343,7 @@ class AuthService {
       if (response.ok) {
         return { data };
       } else {
-        return { error: data.message || 'Error en la petición' };
+        return { error: data.error || data.message || 'Error en la petición' };
       }
     } catch (error) {
       console.error('DELETE request error:', error);
