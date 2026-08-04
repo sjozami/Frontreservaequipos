@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { format, startOfWeek, addDays, isSameDay } from "date-fns"
 import { es } from "date-fns/locale"
+import ProtectedRoute from "@/components/protected-route"
 // import type { ReservaEscolar } from "@/lib/types"  // already imported above
 
 export default function DisplayPage() {
@@ -120,6 +121,9 @@ export default function DisplayPage() {
     const proximasReservasEquipo = selectedEquipoId ? proximasReservas.filter((r) => r.equipoId === selectedEquipoId) : []
 
     return (
+      // Cartelera: sin la navegación del AppShell, pero solo para administradores.
+      // Hasta acá la ruta era pública y exponía reservas, docentes y equipos.
+      <ProtectedRoute requireAdmin>
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 p-6">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -351,5 +355,6 @@ export default function DisplayPage() {
           <p>Actualización automática cada minuto • Sistema de Reservas v2.0</p>
         </div>
       </div>
+      </ProtectedRoute>
     )
   }
