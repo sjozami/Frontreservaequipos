@@ -87,11 +87,12 @@ export function DetalleReservaModal(props: DetalleReservaModalProps) {
               </div>
               <div>
                 <span className="text-muted-foreground">Curso:</span>
-                <p className="font-medium">{docente?.curso}</p>
+                {/* De la reserva: lo que se dictaba en ese horario. */}
+                <p className="font-medium">{reserva.curso ?? docente?.curso ?? "—"}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Materia:</span>
-                <p className="font-medium">{docente?.materia}</p>
+                <p className="font-medium">{reserva.materia ?? docente?.materia ?? "—"}</p>
               </div>
             </div>
           </div>

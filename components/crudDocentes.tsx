@@ -35,17 +35,16 @@ interface Docente {
   id: string
   nombre: string
   apellido: string
-  curso: string
-  materia: string
   observaciones?: string
   usuario?: Usuario | null
+  // Qué dicta según la grilla horaria (lo calcula el backend).
+  cursos?: string[]
+  materias?: string[]
 }
 
 const FORM_VACIO = {
   nombre: "",
   apellido: "",
-  curso: "",
-  materia: "",
   observaciones: "",
   usuario: {
     username: "",
@@ -93,8 +92,6 @@ export function CrudDocentes() {
     setFormData({
       nombre: "",
       apellido: "",
-      curso: "",
-      materia: "",
       observaciones: "",
       usuario: { username: "", email: "", password: "", role: "DOCENTE" },
     })
@@ -106,8 +103,6 @@ export function CrudDocentes() {
   const validar = (): string | null => {
     if (!formData.nombre.trim()) return "El nombre es obligatorio"
     if (!formData.apellido.trim()) return "El apellido es obligatorio"
-    if (!formData.curso.trim()) return "El curso es obligatorio"
-    if (!formData.materia.trim()) return "La materia es obligatoria"
     if (isAdmin() && crearUsuario) {
       if (!formData.usuario.username.trim()) return "El nombre de usuario es obligatorio"
       if (!formData.usuario.email.trim()) return "El email es obligatorio"
@@ -131,8 +126,6 @@ export function CrudDocentes() {
       const docenteData = {
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
-        curso: formData.curso.trim(),
-        materia: formData.materia.trim(),
       }
 
       const crearUsuarioActivo = isAdmin() && crearUsuario
@@ -184,8 +177,6 @@ export function CrudDocentes() {
     setFormData({
       nombre: docente.nombre,
       apellido: docente.apellido,
-      curso: docente.curso,
-      materia: docente.materia,
       observaciones: docente.observaciones ?? "",
       usuario: {
         username: docente.usuario?.username ?? "",
@@ -221,8 +212,8 @@ export function CrudDocentes() {
     return docentes.filter(
       (d) =>
         `${d.nombre} ${d.apellido}`.toLowerCase().includes(q) ||
-        d.curso.toLowerCase().includes(q) ||
-        d.materia.toLowerCase().includes(q) ||
+        (d.cursos ?? []).some((c) => c.toLowerCase().includes(q)) ||
+        (d.materias ?? []).some((m) => m.toLowerCase().includes(q)) ||
         (d.usuario?.username ?? "").toLowerCase().includes(q),
     )
   }, [docentes, busqueda])
@@ -250,25 +241,37 @@ export function CrudDocentes() {
 
             <div className="space-y-4">
               <div>
-                <Label>Nombre *</Label>
-                <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
+                <Label htmlFor="docente-nombre">Nombre *</Label>
+                <Input
+                  id="docente-nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Apellido *</Label>
-                <Input value={formData.apellido} onChange={(e) => setFormData({ ...formData, apellido: e.target.value })} />
+                <Label htmlFor="docente-apellido">Apellido *</Label>
+                <Input
+                  id="docente-apellido"
+                  value={formData.apellido}
+                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Curso *</Label>
-                <Input value={formData.curso} onChange={(e) => setFormData({ ...formData, curso: e.target.value })} placeholder="Ej: 3° A" />
+                <Label htmlFor="docente-observaciones">Observaciones</Label>
+                <Textarea
+                  id="docente-observaciones"
+                  value={formData.observaciones}
+                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                />
               </div>
-              <div>
-                <Label>Materia *</Label>
-                <Input value={formData.materia} onChange={(e) => setFormData({ ...formData, materia: e.target.value })} />
-              </div>
-              <div>
-                <Label>Observaciones</Label>
-                <Textarea value={formData.observaciones} onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} />
-              </div>
+
+              <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Qué cursos y materias dicta se define en la{" "}
+                <a href="/grilla" className="font-medium text-primary underline underline-offset-2">
+                  grilla horaria
+                </a>
+                , no acá: un docente puede dictar varias materias en varios cursos.
+              </p>
 
               {isAdmin() && (
                 <>
@@ -414,7 +417,19 @@ export function CrudDocentes() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">{docente.curso} • {docente.materia}</p>
+                {/* Lo que dicta sale de la grilla, no de la ficha del docente. */}
+                {docente.materias && docente.materias.length > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {docente.materias.join(", ")}
+                    {docente.cursos && docente.cursos.length > 0 && (
+                      <span className="block text-xs">{docente.cursos.join(" · ")}</span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Sin horarios asignados en la grilla
+                  </p>
+                )}
                 {docente.usuario && isAdmin() && (
                   <p className="text-xs text-muted-foreground">
                     Usuario: {docente.usuario.username} ({docente.usuario.email})

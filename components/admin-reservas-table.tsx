@@ -188,7 +188,10 @@ export default function AdminReservasTable({ reservas, docentes, equipos, pageSi
                   </td>
                   <td className="p-2 align-middle">
                     <div className="text-sm">{docente ? `${docente.nombre} ${docente.apellido}` : '—'}</div>
-                    <div className="text-xs text-muted-foreground">{docente?.curso ?? ''}</div>
+                    {/* Curso y materia de la reserva (resueltos de la grilla). */}
+                    <div className="text-xs text-muted-foreground">
+                      {[r.curso, r.materia].filter(Boolean).join(' · ') || docente?.curso || ''}
+                    </div>
                   </td>
                   <td className="p-2 align-middle text-sm">{formatearHorarioModulos(r.modulos)}</td>
                   <td className="p-2 align-middle">

@@ -187,7 +187,7 @@ function PageReservasDocentesContent() {
   return (
     <AppShell
       titulo="Mis reservas"
-      descripcion={`${currentDocente.nombre} ${currentDocente.apellido} · ${currentDocente.curso ?? ""} ${currentDocente.materia ?? ""}`.trim()}
+      descripcion={`${currentDocente.nombre} ${currentDocente.apellido}`}
       acciones={
         <Button onClick={() => setShowForm((s) => !s)}>
           {showForm ? "Cerrar formulario" : "Nueva reserva"}

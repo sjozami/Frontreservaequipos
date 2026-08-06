@@ -105,12 +105,16 @@ function ReservasEscolaresPageContent() {
       const docente = docentes.find((d) => d.id === reserva.docenteId);
       const equipo = equipos.find((e) => e.id === reserva.equipoId);
 
+      // Se busca sobre el curso y la materia de la reserva, que es lo que se
+      // dictaba en ese horario, no sobre el dato viejo de la ficha del docente.
+      const q = searchTerm.toLowerCase();
       const coincideBusqueda =
-        docente?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        docente?.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        docente?.curso.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        equipo?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reserva.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
+        docente?.nombre.toLowerCase().includes(q) ||
+        docente?.apellido.toLowerCase().includes(q) ||
+        reserva.curso?.toLowerCase().includes(q) ||
+        reserva.materia?.toLowerCase().includes(q) ||
+        equipo?.nombre.toLowerCase().includes(q) ||
+        reserva.observaciones?.toLowerCase().includes(q);
 
       const coincideEstado = filtroEstado === "todos" || reserva.estado === filtroEstado
       const coincideEquipo = filtroEquipo === "todos" || reserva.equipoId === filtroEquipo
@@ -689,7 +693,9 @@ function ReservasEscolaresPageContent() {
                                 )}
                               </CardTitle>
                               <CardDescription>
-                                {docente?.curso} • {docente?.materia} • {reservasGrupo.length} reservas
+                                {[reservasGrupo[0]?.curso, reservasGrupo[0]?.materia].filter(Boolean).join(" • ")}
+                                {[reservasGrupo[0]?.curso, reservasGrupo[0]?.materia].some(Boolean) && " • "}
+                                {reservasGrupo.length} reservas
                                 {esGrupoRecurrente && (
                                   <span className="block text-accent mt-1">
                                     {(typeof fechaInicio === 'string' ? new Date(fechaInicio) : fechaInicio).toLocaleDateString("es-ES")} - {(typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin).toLocaleDateString("es-ES")}

@@ -102,8 +102,13 @@ export interface Docente {
   id: string
   nombre: string
   apellido: string
-  curso: string // "1° A", "2° B", etc.
-  materia: string
+  // En desuso: qué dicta cada docente sale de la grilla horaria. Se conservan
+  // para los datos cargados antes de que la grilla existiera.
+  curso?: string
+  materia?: string
+  // Derivados de la grilla por el backend.
+  cursos?: string[]
+  materias?: string[]
   createdAt: Date
   updatedAt: Date
 }
