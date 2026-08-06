@@ -61,6 +61,12 @@
   --estado-pasado: oklch(0.48 0.01 142);
   --estado-pasado-bg: oklch(0.96 0.002 142);
   --estado-pasado-borde: oklch(0.89 0.004 142);
+
+  /* "Tiene clase" es informativo, no una acción: va en otro tono para no
+     confundirse con "seleccionado", que usa el verde de marca. */
+  --estado-clase: oklch(0.5 0.15 255);
+  --estado-clase-bg: oklch(0.97 0.03 255);
+  --estado-clase-borde: oklch(0.8 0.09 255);
 }
 
 .dark {
@@ -114,6 +120,10 @@
   --estado-pasado: oklch(0.6 0.01 142);
   --estado-pasado-bg: oklch(0.17 0.003 142);
   --estado-pasado-borde: oklch(0.28 0.005 142);
+
+  --estado-clase: oklch(0.78 0.12 255);
+  --estado-clase-bg: oklch(0.24 0.06 255);
+  --estado-clase-borde: oklch(0.42 0.1 255);
 }
 
 @theme inline {
@@ -168,6 +178,9 @@
   --color-estado-pasado: var(--estado-pasado);
   --color-estado-pasado-bg: var(--estado-pasado-bg);
   --color-estado-pasado-borde: var(--estado-pasado-borde);
+  --color-estado-clase: var(--estado-clase);
+  --color-estado-clase-bg: var(--estado-clase-bg);
+  --color-estado-clase-borde: var(--estado-clase-borde);
 }
 
 @layer base {

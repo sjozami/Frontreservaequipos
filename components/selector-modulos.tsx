@@ -50,7 +50,7 @@ const ESTILOS: Record<EstadoModulo | "seleccionado", string> = {
 
 const LEYENDA: { clase: string; texto: string }[] = [
   { clase: "border-border bg-card", texto: "Disponible" },
-  { clase: "border-primary/50 bg-primary/10", texto: "Tiene clase" },
+  { clase: "border-estado-clase-borde bg-estado-clase-bg", texto: "Tiene clase" },
   { clase: "border-primary bg-primary/15", texto: "Seleccionado" },
   { clase: "border-estado-ocupado-borde bg-estado-ocupado-bg", texto: "Ocupado" },
   { clase: "border-estado-pendiente-borde bg-estado-pendiente-bg", texto: "Reservado (pendiente)" },
@@ -120,7 +120,7 @@ export function SelectorModulos({
                 seleccionado
                   ? ESTILOS.seleccionado
                   : esSuHorario
-                    ? "border-primary/50 bg-primary/5 hover:border-primary hover:bg-primary/10"
+                    ? "border-estado-clase-borde bg-estado-clase-bg hover:border-estado-clase"
                     : ESTILOS[estado]
               } ${disponible ? "cursor-pointer" : "cursor-not-allowed"}`}
             >
@@ -179,7 +179,7 @@ export function SelectorModulos({
 
               {/* Qué le toca dictar al docente en este módulo. */}
               {esSuHorario && (
-                <p className="mt-1 text-[11px] font-medium leading-tight text-primary break-words">
+                <p className="mt-1 text-[11px] font-medium leading-tight text-estado-clase">
                   {claseDocente!.materia}
                   <span className="block font-normal text-muted-foreground">{claseDocente!.curso}</span>
                 </p>

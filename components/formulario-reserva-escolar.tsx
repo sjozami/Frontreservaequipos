@@ -584,7 +584,7 @@ export function FormularioReservaEscolar({
                       modifiers={{ conClase: (date) => diasConClase.has(date.getDay()) }}
                       modifiersClassNames={{
                         conClase:
-                          "bg-primary/10 text-primary font-semibold rounded-md",
+                          "bg-estado-clase-bg text-estado-clase font-semibold rounded-md",
                       }}
                       initialFocus
                     />
@@ -593,7 +593,10 @@ export function FormularioReservaEscolar({
               <CampoError id="error-fecha">{errores.fecha}</CampoError>
               {docenteId && diasConClase.size > 0 && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="inline-block h-3 w-3 rounded-sm bg-primary/20" aria-hidden="true" />
+                  <span
+                    className="inline-block h-3 w-3 rounded-sm border border-estado-clase-borde bg-estado-clase-bg"
+                    aria-hidden="true"
+                  />
                   Días resaltados: {docenteSeleccionado?.nombre ?? "el docente"} tiene clase
                 </p>
               )}
