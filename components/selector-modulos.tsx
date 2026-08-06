@@ -26,6 +26,8 @@ export interface DisponibilidadModulo {
   docenteNombre?: string
   docenteCurso?: string
   docenteMateria?: string
+  /** El docente tiene clase en este módulo según la grilla: qué y con quién. */
+  claseDocente?: { materia: string; curso: string }
 }
 
 interface SelectorModulosProps {
@@ -48,6 +50,7 @@ const ESTILOS: Record<EstadoModulo | "seleccionado", string> = {
 
 const LEYENDA: { clase: string; texto: string }[] = [
   { clase: "border-border bg-card", texto: "Disponible" },
+  { clase: "border-primary/50 bg-primary/10", texto: "Tiene clase" },
   { clase: "border-primary bg-primary/15", texto: "Seleccionado" },
   { clase: "border-estado-ocupado-borde bg-estado-ocupado-bg", texto: "Ocupado" },
   { clase: "border-estado-pendiente-borde bg-estado-pendiente-bg", texto: "Reservado (pendiente)" },
@@ -79,25 +82,30 @@ export function SelectorModulos({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
         {MODULOS_HORARIOS.map((modulo) => {
-          const { disponible, estado, razon, docenteNombre, docenteCurso, docenteMateria } =
+          const { disponible, estado, razon, docenteNombre, docenteCurso, docenteMateria, claseDocente } =
             getDisponibilidad(modulo.numero)
           const seleccionado = seleccionados.includes(modulo.numero)
           const ocupadoPorOtro = estado === "confirmada" || estado === "pendiente"
+          // Módulo libre en el que además el docente tiene clase: es el candidato
+          // natural a reservar, así que se destaca.
+          const esSuHorario = !!claseDocente && !ocupadoPorOtro && estado !== "pasado"
 
           // "3°A • Historia": el contexto de quién lo ocupa, cuando lo tenemos.
           const contextoDocente = [docenteCurso, docenteMateria].filter(Boolean).join(" • ")
+
+          // Qué dicta acá el docente se dice siempre que se sepa, incluso si
+          // todavía falta elegir el equipo: es el dato que evita preguntar.
+          const suClase = claseDocente ? `Dicta ${claseDocente.materia} en ${claseDocente.curso}.` : ""
 
           const detalle = ocupadoPorOtro
             ? docenteNombre
               ? `${razon} por ${docenteNombre}${contextoDocente ? ` (${contextoDocente})` : ""}`
               : `${razon} — no se puede seleccionar`
             : estado === "pasado"
-              ? "Este módulo ya pasó"
+              ? `${suClase} Este módulo ya pasó`.trim()
               : estado === "sin-contexto"
-                ? "Elegí equipo y fecha"
-                : seleccionado
-                  ? `Quitar ${modulo.nombre}`
-                  : `Seleccionar ${modulo.nombre}`
+                ? `${suClase} Elegí equipo y fecha`.trim()
+                : `${suClase} ${seleccionado ? `Quitar ${modulo.nombre}` : `Seleccionar ${modulo.nombre}`}`.trim()
 
           return (
             <button
@@ -109,7 +117,11 @@ export function SelectorModulos({
               aria-label={`${modulo.nombre}, ${modulo.horaInicio} a ${modulo.horaFin}. ${detalle}`}
               onClick={() => onToggle(modulo.numero, !seleccionado)}
               className={`relative text-left border-2 rounded-lg p-2.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
-                seleccionado ? ESTILOS.seleccionado : ESTILOS[estado]
+                seleccionado
+                  ? ESTILOS.seleccionado
+                  : esSuHorario
+                    ? "border-primary/50 bg-primary/5 hover:border-primary hover:bg-primary/10"
+                    : ESTILOS[estado]
               } ${disponible ? "cursor-pointer" : "cursor-not-allowed"}`}
             >
               <div className="flex items-start justify-between gap-1">
@@ -163,6 +175,14 @@ export function SelectorModulos({
               )}
               {estado === "pasado" && (
                 <p className="text-[11px] font-medium mt-1 text-estado-pasado">Ya pasó</p>
+              )}
+
+              {/* Qué le toca dictar al docente en este módulo. */}
+              {esSuHorario && (
+                <p className="mt-1 text-[11px] font-medium leading-tight text-primary break-words">
+                  {claseDocente!.materia}
+                  <span className="block font-normal text-muted-foreground">{claseDocente!.curso}</span>
+                </p>
               )}
             </button>
           )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,13 @@ import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from 
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
 import { CampoError } from "@/components/campo-error"
 import { formatearFechaLarga } from "@/lib/fechas"
-import { resolverHorario, type ResolucionHorario } from "@/lib/grillaController"
+import {
+  resolverHorario,
+  obtenerGrillaDocente,
+  DIA_A_INDICE,
+  type ResolucionHorario,
+  type HorarioClase,
+} from "@/lib/grillaController"
 import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
@@ -92,6 +98,39 @@ export function FormularioReservaEscolar({
   // Qué está dictando el docente en la fecha y módulos elegidos, según la grilla.
   const [horario, setHorario] = useState<ResolucionHorario | null>(null)
   const [resolviendo, setResolviendo] = useState(false)
+
+  // Grilla completa del docente elegido: con esto se marcan en el calendario los
+  // días que da clase y, dentro del día, los módulos que tiene asignados.
+  const [grillaDocente, setGrillaDocente] = useState<HorarioClase[]>([])
+
+  useEffect(() => {
+    if (!docenteId) {
+      setGrillaDocente([])
+      return
+    }
+    let cancelado = false
+    obtenerGrillaDocente(docenteId).then((h) => {
+      if (!cancelado) setGrillaDocente(h)
+    })
+    return () => {
+      cancelado = true
+    }
+  }, [docenteId])
+
+  // Días de la semana (índice JS) en los que el docente tiene clase.
+  const diasConClase = useMemo(() => {
+    return new Set(grillaDocente.map((h) => DIA_A_INDICE[h.dia]))
+  }, [grillaDocente])
+
+  // Módulos que el docente tiene asignados en el día de la fecha elegida.
+  const modulosConClase = useMemo(() => {
+    if (!fecha) return new Map<number, HorarioClase>()
+    const mapa = new Map<number, HorarioClase>()
+    grillaDocente
+      .filter((h) => DIA_A_INDICE[h.dia] === fecha.getDay())
+      .forEach((h) => mapa.set(h.modulo, h))
+    return mapa
+  }, [grillaDocente, fecha])
 
   const generarFechasRecurrentes = (fechaInicio: Date, frecuencia: string, fechaFin: Date): Date[] => {
     const fechas: Date[] = []
@@ -352,8 +391,11 @@ export function FormularioReservaEscolar({
   }
 
   const getDisponibilidadModulo = (modulo: number): DisponibilidadModulo => {
+    const clase = modulosConClase.get(modulo)
+    const claseDocente = clase ? { materia: clase.materiaNombre, curso: clase.cursoNombre } : undefined
+
     // Sin equipo y fecha no hay con qué comparar: no afirmamos que esté libre.
-    if (!equipoId || !fecha) return { disponible: false, estado: "sin-contexto" }
+    if (!equipoId || !fecha) return { disponible: false, estado: "sin-contexto", claseDocente }
 
     if (moduloYaPaso(modulo)) {
       return { disponible: false, estado: "pasado", razon: "Ya pasó" }
@@ -379,7 +421,7 @@ export function FormularioReservaEscolar({
       return { disponible: false, estado: "confirmada", razon: "Ocupado" }
     }
 
-    return { disponible: true, estado: "disponible" }
+    return { disponible: true, estado: "disponible", claseDocente }
   }
 
   const equipoSeleccionado = getEquipoSeleccionado()
@@ -466,7 +508,13 @@ export function FormularioReservaEscolar({
               {lockDocente && currentDocente ? (
                 <div className="p-2 border rounded-md bg-muted">
                   <div className="font-medium">{currentDocente.nombre} {currentDocente.apellido}</div>
-                  <div className="text-sm text-muted-foreground">{currentDocente.curso}{currentDocente.materia ? ` • ${currentDocente.materia}` : ''}</div>
+                  {(currentDocente.materias?.length || currentDocente.materia) && (
+                    <div className="text-sm text-muted-foreground">
+                      {currentDocente.materias?.length
+                        ? currentDocente.materias.join(", ")
+                        : [currentDocente.curso, currentDocente.materia].filter(Boolean).join(" • ")}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Select value={docenteId} onValueChange={setDocenteId}>
@@ -474,12 +522,21 @@ export function FormularioReservaEscolar({
                     <SelectValue placeholder="Seleccionar docente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {docentes.map((docente) => (
-                      <SelectItem key={docente.id} value={docente.id}>
-                        {docente.nombre} {docente.apellido} - {docente.curso}
-                        {docente.materia && ` (${docente.materia})`}
-                      </SelectItem>
-                    ))}
+                    {docentes.map((docente) => {
+                      // Lo que dicta sale de la grilla; el dato viejo de la ficha
+                      // queda de respaldo. Sin ninguno, va solo el nombre (antes
+                      // quedaba un guión suelto: "grilla doc -").
+                      const detalle =
+                        docente.materias?.length
+                          ? docente.materias.join(", ")
+                          : [docente.curso, docente.materia].filter(Boolean).join(" · ")
+                      return (
+                        <SelectItem key={docente.id} value={docente.id}>
+                          {docente.nombre} {docente.apellido}
+                          {detalle && ` — ${detalle}`}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               )}
@@ -522,11 +579,29 @@ export function FormularioReservaEscolar({
                         if (maxFechaReserva && isAfter(startOfDay(date), endOfDay(maxFechaReserva))) return true
                         return false
                       }}
+                      // Los días en que el docente da clase se marcan, no se
+                      // fuerzan: también hay que poder reservar fuera de horario.
+                      modifiers={{ conClase: (date) => diasConClase.has(date.getDay()) }}
+                      modifiersClassNames={{
+                        conClase:
+                          "bg-primary/10 text-primary font-semibold rounded-md",
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
               </Popover>
               <CampoError id="error-fecha">{errores.fecha}</CampoError>
+              {docenteId && diasConClase.size > 0 && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="inline-block h-3 w-3 rounded-sm bg-primary/20" aria-hidden="true" />
+                  Días resaltados: {docenteSeleccionado?.nombre ?? "el docente"} tiene clase
+                </p>
+              )}
+              {docenteId && grillaDocente.length === 0 && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Este docente no tiene horarios cargados en la grilla.
+                </p>
+              )}
             </div>
 
             <div>
@@ -683,7 +758,22 @@ export function FormularioReservaEscolar({
                 )}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {/* Atajo al caso normal: reservar justo las horas que dicta. */}
+              {modulosConClase.size > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const suyos = [...modulosConClase.keys()]
+                      .filter((m) => getDisponibilidadModulo(m).disponible)
+                      .sort((a, b) => a - b)
+                    setModulosSeleccionados(suyos)
+                  }}
+                  disabled={!equipoId || !fecha}
+                >
+                  Sus módulos ({modulosConClase.size})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

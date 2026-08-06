@@ -85,6 +85,29 @@ export async function obtenerGrilla(cursoId?: string): Promise<HorarioClase[]> {
   return r.data ?? [];
 }
 
+/**
+ * Todos los horarios de un docente. Sirve para marcar en el calendario los días
+ * en que da clase y, dentro del día, qué módulos tiene asignados.
+ * Devuelve [] si falla: la reserva tiene que poder hacerse igual.
+ */
+export async function obtenerGrillaDocente(docenteId: string): Promise<HorarioClase[]> {
+  const r = await authService.get<HorarioClase[]>(`/api/grilla?docenteId=${docenteId}`);
+  if (r.error) {
+    console.warn('No se pudo cargar la grilla del docente:', r.error);
+    return [];
+  }
+  return r.data ?? [];
+}
+
+/** Índice de día de JS (0=domingo) para cada día de la grilla. */
+export const DIA_A_INDICE: Record<DiaSemana, number> = {
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+};
+
 export async function guardarHorario(data: {
   cursoId: string;
   dia: DiaSemana;
