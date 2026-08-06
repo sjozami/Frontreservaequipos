@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { CalendarDays, GraduationCap, Laptop, LayoutDashboard, Layers, Menu, X } from "lucide-react"
+import { CalendarDays, CalendarRange, GraduationCap, Laptop, LayoutDashboard, Layers, Menu, X } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/protected-route"
 import UserNavigation from "@/components/user-navigation"
@@ -21,6 +21,7 @@ const NAV: ItemNav[] = [
   { href: "/reservas", etiqueta: "Reservas", Icono: CalendarDays },
   { href: "/docentes", etiqueta: "Docentes", Icono: GraduationCap, soloAdmin: true },
   { href: "/equipos", etiqueta: "Equipos", Icono: Laptop, soloAdmin: true },
+  { href: "/grilla", etiqueta: "Grilla", Icono: CalendarRange, soloAdmin: true },
   { href: "/agrupaciones", etiqueta: "Agrupaciones", Icono: Layers, soloAdmin: true },
 ]
 

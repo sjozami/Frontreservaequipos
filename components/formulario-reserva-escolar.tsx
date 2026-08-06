@@ -14,6 +14,7 @@ import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from 
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
 import { CampoError } from "@/components/campo-error"
 import { formatearFechaLarga } from "@/lib/fechas"
+import { resolverHorario, type ResolucionHorario } from "@/lib/grillaController"
 import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
@@ -87,6 +88,10 @@ export function FormularioReservaEscolar({
   // Disponibilidad real contra el backend. Antes solo se consultaba para docentes,
   // así que un admin podía pisar una reserva existente sin verla marcada.
   const { getOcupacionModulo, loading: loadingModulosOcupados } = useModulosOcupados(fecha, equipoId)
+
+  // Qué está dictando el docente en la fecha y módulos elegidos, según la grilla.
+  const [horario, setHorario] = useState<ResolucionHorario | null>(null)
+  const [resolviendo, setResolviendo] = useState(false)
 
   const generarFechasRecurrentes = (fechaInicio: Date, frecuencia: string, fechaFin: Date): Date[] => {
     const fechas: Date[] = []
@@ -210,6 +215,31 @@ export function FormularioReservaEscolar({
     setFechasGeneradas([])
   }
 
+  // Consulta la grilla cuando ya hay docente, fecha y módulos elegidos.
+  useEffect(() => {
+    if (!docenteId || !fecha || modulosSeleccionados.length === 0) {
+      setHorario(null)
+      return
+    }
+
+    let cancelado = false
+    setResolviendo(true)
+
+    const fechaStr = format(fecha, "yyyy-MM-dd")
+    resolverHorario(fechaStr, modulosSeleccionados, docenteId)
+      .then((res) => {
+        if (!cancelado) setHorario(res)
+      })
+      .finally(() => {
+        if (!cancelado) setResolviendo(false)
+      })
+
+    // Si cambian los datos antes de que vuelva la respuesta, se descarta la vieja.
+    return () => {
+      cancelado = true
+    }
+  }, [docenteId, fecha, modulosSeleccionados])
+
   const handleGuardar = async () => {
     if (!validarFormulario() || !fecha) return;
     setGuardando(true);
@@ -217,7 +247,14 @@ export function FormularioReservaEscolar({
 
     try {
       const now = new Date()
-      
+
+      // Curso y materia deducidos de la grilla, congelados en la reserva. Si la
+      // selección cruza varios cursos se guardan todos, separados por coma.
+      const cursosResueltos = [...new Set((horario?.modulos ?? []).map((m) => m.curso).filter(Boolean))]
+      const materiasResueltas = [...new Set((horario?.modulos ?? []).map((m) => m.materia).filter(Boolean))]
+      const cursoResuelto = cursosResueltos.join(", ") || undefined
+      const materiaResuelta = materiasResueltas.join(", ") || undefined
+
       if (esRecurrente && fechasGeneradas.length > 0 && onCrearReservasRecurrentes) {
         const grupoRecurrenteId = `grupo-rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -228,6 +265,8 @@ export function FormularioReservaEscolar({
           modulos: modulosSeleccionados,
           observaciones: `${observaciones}${observaciones ? " • " : ""}Reserva recurrente (${frecuencia})`,
           estado,
+          curso: cursoResuelto,
+          materia: materiaResuelta,
           esRecurrente: true,
           frecuencia,
           fechaFin: fechaHasta,
@@ -247,6 +286,8 @@ export function FormularioReservaEscolar({
           observaciones,
           estado,
           esRecurrente: false,
+          curso: cursoResuelto,
+          materia: materiaResuelta,
           fechaCreacion: now,
           createdAt: now,
           updatedAt: now,
@@ -683,6 +724,47 @@ export function FormularioReservaEscolar({
             getDisponibilidad={getDisponibilidadModulo}
             onToggle={handleSeleccionarModulo}
           />
+
+          {/* Qué se dicta en esos módulos, según la grilla horaria. */}
+          {modulosSeleccionados.length > 0 && docenteId && fecha && (
+            <div className="mt-4 rounded-lg border bg-muted/40 p-3">
+              {resolviendo ? (
+                <p className="text-sm text-muted-foreground">Buscando en la grilla horaria…</p>
+              ) : horario?.sinClase ? (
+                <p className="text-sm text-muted-foreground">
+                  Ese día no hay clases según la grilla. Podés reservar igual.
+                </p>
+              ) : horario && horario.modulos.some((m) => m.materia) ? (
+                <>
+                  <p className="text-sm font-medium">Según la grilla, en esos módulos se dicta:</p>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {horario.modulos.map((m) => (
+                      <li key={m.modulo} className="flex flex-wrap gap-x-2">
+                        <span className="tabular-nums text-muted-foreground">Módulo {m.modulo}:</span>
+                        {m.materia ? (
+                          <span className="font-medium">
+                            {m.materia} <span className="font-normal text-muted-foreground">· {m.curso}</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">sin clase asignada</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {horario.variosCursos && (
+                    <p className="mt-2 text-xs text-estado-pendiente">
+                      La selección abarca más de un curso. Se van a guardar todos en la reserva.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No hay grilla cargada para ese docente y horario, así que no se puede deducir la materia. La
+                  reserva se guarda igual.
+                </p>
+              )}
+            </div>
+          )}
           <CampoError id="error-modulos">{errores.modulos}</CampoError>
           <CampoError>{errores.disponibilidad}</CampoError>
         </CardContent>

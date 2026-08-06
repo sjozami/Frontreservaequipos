@@ -116,6 +116,10 @@ export interface ReservaEscolar {
   modulos: number[] // [1, 2, 3] para módulos 1°, 2° y 3°
   estado: "pendiente" | "confirmada" | "cancelada"
   observaciones?: string
+  // Curso y materia resueltos desde la grilla al crear la reserva. Quedan
+  // congelados: reflejan lo que se dictaba entonces, no lo que se dicta hoy.
+  curso?: string
+  materia?: string
   esRecurrente: boolean
   frecuencia?: "diaria" | "semanal" | "quincenal" | "mensual"
   fechaFin?: Date

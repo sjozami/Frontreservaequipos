@@ -8,6 +8,9 @@ export interface CrearReservaData {
   equipoId: string;
   estado?: "pendiente" | "confirmada" | "cancelada";
   observaciones?: string;
+  // Deducidos de la grilla horaria al crear la reserva.
+  curso?: string;
+  materia?: string;
   esRecurrente?: boolean;
   frecuencia?: "diaria" | "semanal" | "quincenal" | "mensual";
   fechaFin?: Date;
