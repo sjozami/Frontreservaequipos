@@ -42,6 +42,8 @@ import { useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { claveFecha } from "@/lib/fechas"
+import { VistaDiaModulos } from "@/components/vista-dia-modulos"
 import { toast } from "sonner"
 
 function ReservasEscolaresPageContent() {
@@ -50,7 +52,8 @@ function ReservasEscolaresPageContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
   const [filtroEquipo, setFiltroEquipo] = useState<string>("todos")
-  const [vistaActual, setVistaActual] = useState<"individual" | "agrupada">("individual")
+  // La vista por día es la que más se usa para operar: se abre por defecto.
+  const [vistaActual, setVistaActual] = useState<"dia" | "individual" | "agrupada">("dia")
   const [dialogNuevaReserva, setDialogNuevaReserva] = useState(false)
   const [reservas, setReservas] = useState<ReservaEscolar[]>([])
   const [docentes, setDocentes] = useState<Docente[]>([])
@@ -98,8 +101,6 @@ function ReservasEscolaresPageContent() {
     fetchData();
   }, []);
 
-  const agrupacionesEscolares = useMemo(() => agruparReservasEscolares(reservas), [reservas]);
-
   const reservasFiltradas = useMemo(() => {
     return reservas.filter((reserva) => {
       const docente = docentes.find((d) => d.id === reserva.docenteId);
@@ -118,11 +119,21 @@ function ReservasEscolaresPageContent() {
 
       const coincideEstado = filtroEstado === "todos" || reserva.estado === filtroEstado
       const coincideEquipo = filtroEquipo === "todos" || reserva.equipoId === filtroEquipo
-      const coincideFecha = !filtroFecha || (typeof reserva.fecha === 'string' ? new Date(reserva.fecha) : reserva.fecha).toDateString() === filtroFecha.toDateString();
+      // Comparar por clave YYYY-MM-DD: las reservas vienen a medianoche UTC y
+      // toDateString() las corría al día anterior en UTC-3, así que el filtro
+      // por fecha nunca encontraba nada.
+      const coincideFecha = !filtroFecha || claveFecha(reserva.fecha) === claveFecha(filtroFecha);
 
       return coincideBusqueda && coincideEstado && coincideEquipo && coincideFecha
     })
   }, [reservas, searchTerm, filtroEstado, filtroEquipo, filtroFecha])
+
+  // Sobre las reservas ya filtradas: antes esta vista ignoraba los filtros, así
+  // que con una fecha elegida una pestaña decía 0 y la otra 5.
+  const agrupacionesEscolares = useMemo(
+    () => agruparReservasEscolares(reservasFiltradas),
+    [reservasFiltradas]
+  );
 
   const estadisticasEscolares = useMemo(() => {
     const totalReservas = reservas.length
@@ -611,17 +622,37 @@ function ReservasEscolaresPageContent() {
         <div className="space-y-6">
           <Tabs
             value={vistaActual}
-            onValueChange={(value) => setVistaActual(value as "individual" | "agrupada")}
+            onValueChange={(value) => setVistaActual(value as "dia" | "individual" | "agrupada")}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 mb-6 shadow-sm">
+            <TabsList className="grid w-full grid-cols-3 mb-6 shadow-sm">
+              <TabsTrigger value="dia" className="font-medium">
+                Día por módulos
+              </TabsTrigger>
               <TabsTrigger value="individual" className="font-medium">
-                Reservas Individuales ({reservasFiltradas.length})
+                Listado ({reservasFiltradas.length})
               </TabsTrigger>
               <TabsTrigger value="agrupada" className="font-medium">
-                Vista por Docente ({agrupacionesEscolares.size})
+                Por docente ({agrupacionesEscolares.size})
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dia">
+              <Card>
+                <CardContent className="pt-6">
+                  <VistaDiaModulos
+                    reservas={reservas}
+                    docentes={docentes}
+                    equipos={equipos}
+                    fecha={filtroFecha}
+                    onVer={(r) => {
+                      setReservaSeleccionada(r)
+                      setModalDetalle(true)
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="individual">
               <div className="space-y-6">
