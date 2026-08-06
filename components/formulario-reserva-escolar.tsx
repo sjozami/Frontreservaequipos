@@ -293,8 +293,15 @@ export function FormularioReservaEscolar({
 
       // Curso y materia deducidos de la grilla, congelados en la reserva. Si la
       // selección cruza varios cursos se guardan todos, separados por coma.
-      const cursosResueltos = [...new Set((horario?.modulos ?? []).map((m) => m.curso).filter(Boolean))]
-      const materiasResueltas = [...new Set((horario?.modulos ?? []).map((m) => m.materia).filter(Boolean))]
+      //
+      // Se resuelve acá y no se usa el estado `horario`: ese se llena por un
+      // efecto asíncrono, así que al guardar rápido tras elegir el último módulo
+      // todavía podía estar vacío y la reserva se grababa sin curso ni materia.
+      const resolucion =
+        (await resolverHorario(format(fecha, "yyyy-MM-dd"), modulosSeleccionados, docenteId)) ?? horario
+
+      const cursosResueltos = [...new Set((resolucion?.modulos ?? []).map((m) => m.curso).filter(Boolean))]
+      const materiasResueltas = [...new Set((resolucion?.modulos ?? []).map((m) => m.materia).filter(Boolean))]
       const cursoResuelto = cursosResueltos.join(", ") || undefined
       const materiaResuelta = materiasResueltas.join(", ") || undefined
 
