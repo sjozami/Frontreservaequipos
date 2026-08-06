@@ -42,6 +42,15 @@ export function formatearDiaSemana(fecha: string | Date): string {
   return format(parseFechaReserva(fecha), "EEEE", { locale: es })
 }
 
+/**
+ * Sábado o domingo. No se dictan clases, así que no se reservan equipos.
+ * Se compara sobre la fecha de calendario para que no dependa de la zona horaria.
+ */
+export function esFinDeSemana(fecha: string | Date): boolean {
+  const dia = parseFechaReserva(fecha).getDay()
+  return dia === 0 || dia === 6
+}
+
 /** Clave "YYYY-MM-DD" para comparar días sin que interfiera la zona horaria. */
 export function claveFecha(fecha: string | Date): string {
   return format(parseFechaReserva(fecha), "yyyy-MM-dd")

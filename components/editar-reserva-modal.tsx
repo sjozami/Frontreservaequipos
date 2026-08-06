@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, AlertTriangle } from "lucide-react";
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos";
 import { formatearHorarioModulos, verificarDisponibilidadModulos } from "@/lib/reservas-utils";
+import { esFinDeSemana } from "@/lib/fechas";
 import { useModulosOcupados } from "@/hooks/use-reservas";
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types";
 import React from "react";
@@ -248,7 +249,8 @@ export function EditarReservaModal({
                   mode="single"
                   selected={fechaSeleccionada}
                   onSelect={setFechaSeleccionada}
-                  disabled={(date) => date < new Date()}
+                  // Sin clases los fines de semana, igual que al crear.
+                  disabled={(date) => esFinDeSemana(date) || date < new Date()}
                   initialFocus
                 />
               </PopoverContent>

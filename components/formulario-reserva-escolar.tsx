@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from "lucide-react"
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
 import { CampoError } from "@/components/campo-error"
-import { formatearFechaLarga } from "@/lib/fechas"
+import { formatearFechaLarga, esFinDeSemana } from "@/lib/fechas"
 import {
   resolverHorario,
   obtenerGrillaDocente,
@@ -137,7 +137,11 @@ export function FormularioReservaEscolar({
     let fechaActual = new Date(fechaInicio)
 
     while (isBefore(fechaActual, fechaFin) || fechaActual.getTime() === fechaFin.getTime()) {
-      fechas.push(new Date(fechaActual))
+      // Los fines de semana no se dictan clases: se saltean en vez de generar
+      // reservas que el backend rechazaría.
+      if (!esFinDeSemana(fechaActual)) {
+        fechas.push(new Date(fechaActual))
+      }
 
       switch (frecuencia) {
         case "semanal":
@@ -573,6 +577,8 @@ export function FormularioReservaEscolar({
                         }
                       }}
                       disabled={(date) => {
+                        // No se dicta clase los fines de semana.
+                        if (esFinDeSemana(date)) return true
                         // disable past dates
                         if (isBefore(date, startOfDay(new Date()))) return true
                         // disable beyond maxFechaReserva if provided
@@ -689,6 +695,7 @@ export function FormularioReservaEscolar({
                           setFechaHasta(date)
                         }}
                         disabled={(date) => {
+                          if (esFinDeSemana(date)) return true
                           // must be after start date for recurrent reservations
                           if (fecha && !isAfter(date, startOfDay(fecha))) return true
                           // cannot be in the past
