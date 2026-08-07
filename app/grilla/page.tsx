@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SelectorBuscable } from "@/components/selector-buscable"
 import { CalendarRange, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { MODULOS_HORARIOS } from "@/lib/constants"
@@ -399,35 +400,35 @@ export default function GrillaPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="materia-celda">Materia</Label>
-              <Select value={materiaId} onValueChange={setMateriaId}>
-                <SelectTrigger id="materia-celda" className="mt-1">
-                  <SelectValue placeholder="Elegí una materia" />
-                </SelectTrigger>
-                <SelectContent>
-                  {materias.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mt-1">
+                <SelectorBuscable
+                  id="materia-celda"
+                  valor={materiaId}
+                  onChange={setMateriaId}
+                  placeholder="Elegí una materia"
+                  placeholderBusqueda="Buscar materia…"
+                  vacio="Ninguna materia coincide"
+                  opciones={materias.map((m) => ({ valor: m.id, etiqueta: m.nombre }))}
+                />
+              </div>
             </div>
 
             <div>
               <Label htmlFor="docente-celda">Docente</Label>
-              <Select value={docenteId} onValueChange={setDocenteId}>
-                <SelectTrigger id="docente-celda" className="mt-1">
-                  <SelectValue placeholder="Sin asignar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={SIN_DOCENTE}>Sin asignar</SelectItem>
-                  {docentes.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.nombre} {d.apellido}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mt-1">
+                <SelectorBuscable
+                  id="docente-celda"
+                  valor={docenteId}
+                  onChange={setDocenteId}
+                  placeholder="Sin asignar"
+                  placeholderBusqueda="Buscar docente…"
+                  vacio="Ningún docente coincide"
+                  opciones={[
+                    { valor: SIN_DOCENTE, etiqueta: "Sin asignar" },
+                    ...docentes.map((d) => ({ valor: d.id, etiqueta: `${d.nombre} ${d.apellido}` })),
+                  ]}
+                />
+              </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Con el docente asignado, el sistema deduce solo la materia cuando esa persona reserva.
               </p>

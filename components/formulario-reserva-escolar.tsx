@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Save, X, Clock, AlertCircle, Repeat, CalendarDays } from "lucide-react"
 import { SelectorModulos, type DisponibilidadModulo } from "@/components/selector-modulos"
 import { CampoError } from "@/components/campo-error"
+import { SelectorBuscable } from "@/components/selector-buscable"
 import { formatearFechaLarga, esFinDeSemana } from "@/lib/fechas"
 import {
   resolverHorario,
@@ -528,28 +529,27 @@ export function FormularioReservaEscolar({
                   )}
                 </div>
               ) : (
-                <Select value={docenteId} onValueChange={setDocenteId}>
-                  <SelectTrigger id="docente" aria-invalid={!!errores.docente} aria-describedby={errores.docente ? "error-docente" : undefined} className={errores.docente ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Seleccionar docente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docentes.map((docente) => {
-                      // Lo que dicta sale de la grilla; el dato viejo de la ficha
-                      // queda de respaldo. Sin ninguno, va solo el nombre (antes
-                      // quedaba un guión suelto: "grilla doc -").
-                      const detalle =
-                        docente.materias?.length
-                          ? docente.materias.join(", ")
-                          : [docente.curso, docente.materia].filter(Boolean).join(" · ")
-                      return (
-                        <SelectItem key={docente.id} value={docente.id}>
-                          {docente.nombre} {docente.apellido}
-                          {detalle && ` — ${detalle}`}
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
+                // Con buscador: la lista de docentes es larga y escribir el
+                // apellido es más rápido que desplegar y scrollear.
+                <SelectorBuscable
+                  id="docente"
+                  valor={docenteId}
+                  onChange={setDocenteId}
+                  invalido={!!errores.docente}
+                  describedBy={errores.docente ? "error-docente" : undefined}
+                  placeholder="Seleccionar docente"
+                  placeholderBusqueda="Buscar por nombre o materia…"
+                  vacio="Ningún docente coincide"
+                  opciones={docentes.map((docente) => ({
+                    valor: docente.id,
+                    etiqueta: `${docente.nombre} ${docente.apellido}`,
+                    // Lo que dicta sale de la grilla; el dato viejo de la ficha
+                    // queda de respaldo.
+                    detalle: docente.materias?.length
+                      ? docente.materias.join(", ")
+                      : [docente.curso, docente.materia].filter(Boolean).join(" · "),
+                  }))}
+                />
               )}
               <CampoError id="error-docente">{errores.docente}</CampoError>
             </div>
