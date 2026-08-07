@@ -31,6 +31,35 @@ export const MODULOS_HORARIOS: ModuloHorario[] = [
   { numero: 14, horaInicio: "17:50", horaFin: "18:30", nombre: "7° Módulo (tarde)", turno: "tarde", numeroEnTurno: 7 },
 ]
 
+/** Minutos desde medianoche de un "HH:MM". */
+function aMinutos(hora: string): number {
+  const [h, m] = hora.split(":").map(Number)
+  return h * 60 + m
+}
+
+/**
+ * Módulo en curso en ese instante, o null si estamos en un recreo, antes de
+ * empezar o después de terminar.
+ *
+ * Se compara contra las horas reales en vez de calcularlo con aritmética
+ * ((hora-8)*60/40): los recreos hacen que el módulo N no empiece a los N*40
+ * minutos de las 8, y esa cuenta adelantaba el módulo actual.
+ */
+export function moduloEnCurso(fecha: Date = new Date()): number | null {
+  const ahora = fecha.getHours() * 60 + fecha.getMinutes()
+  const m = MODULOS_HORARIOS.find(
+    (x) => ahora >= aMinutos(x.horaInicio) && ahora < aMinutos(x.horaFin)
+  )
+  return m?.numero ?? null
+}
+
+/** Si el módulo ya terminó a esa hora. */
+export function moduloYaTermino(numero: number, fecha: Date = new Date()): boolean {
+  const m = MODULOS_HORARIOS.find((x) => x.numero === numero)
+  if (!m) return false
+  return fecha.getHours() * 60 + fecha.getMinutes() >= aMinutos(m.horaFin)
+}
+
 export const EQUIPOS_ESCOLARES: EquipoEscolar[] = [
   {
     id: "sala-informatica",

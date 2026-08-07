@@ -25,29 +25,12 @@ import {
 import { format, addWeeks, addMonths, isBefore, isAfter, isToday, parse, isValid, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { ReservaEscolar, EquipoEscolar, Docente } from "@/lib/types"
-import { MODULOS_HORARIOS } from "@/lib/constants"
+import { MODULOS_HORARIOS, moduloYaTermino } from "@/lib/constants"
 import { verificarDisponibilidadModulos, formatearHorarioModulos } from "@/lib/reservas-utils"
 import { useModulosOcupados } from "@/hooks/use-reservas"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
-
-const obtenerModuloActual = (): number => {
-  const ahora = new Date()
-  const horaActual = ahora.getHours()
-  const minutosActuales = ahora.getMinutes()
-  const minutosDesdeInicio = (horaActual - 8) * 60 + minutosActuales
-
-  // Si es antes de las 8:00, devolver módulo 1
-  if (minutosDesdeInicio < 0) return 1
-
-  // Si es después de las 18:40, devolver módulo 16
-  if (minutosDesdeInicio >= 640) return 16
-
-  // Calcular módulo actual (cada módulo son 40 minutos)
-  const moduloActual = Math.floor(minutosDesdeInicio / 40) + 1
-  return Math.min(moduloActual, 16)
-}
 
 interface FormularioReservaEscolarProps {
   onCrearReserva: (reserva: Omit<ReservaEscolar, "id" | "fechaCreacion">) => void
@@ -396,10 +379,12 @@ export function FormularioReservaEscolar({
     return docentes.find((d) => d.id === docenteId)
   }
 
+  // Un módulo "ya pasó" solo si su hora de fin quedó atrás. El módulo en curso
+  // sigue siendo reservable: antes se comparaba contra un número de módulo
+  // calculado con aritmética que ignoraba los recreos y se adelantaba.
   const moduloYaPaso = (numeroModulo: number): boolean => {
     if (!fecha || !isToday(fecha)) return false
-    const moduloActual = obtenerModuloActual()
-    return numeroModulo < moduloActual
+    return moduloYaTermino(numeroModulo)
   }
 
   const getDisponibilidadModulo = (modulo: number): DisponibilidadModulo => {

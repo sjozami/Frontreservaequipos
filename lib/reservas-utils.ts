@@ -1,5 +1,5 @@
 import type { AgrupacionReserva, ReservaIndividual, PeriodoReserva, ReservaEscolar } from "./types"
-import { MODULOS_HORARIOS } from "./constants" // Assuming MODULOS_HORARIOS is declared in a constants file
+import { MODULOS_HORARIOS, moduloEnCurso } from "./constants"
 
 // Utilidades para agrupación de reservas
 export function agruparReservas(reservas: ReservaIndividual[]): AgrupacionReserva[] {
@@ -280,21 +280,15 @@ export function calcularEstadisticasEquipo(
   }
 }
 
+/**
+ * Módulo en curso, o 0 si estamos en un recreo o fuera del horario escolar.
+ *
+ * Antes se calculaba como Math.floor(minutosDesde8 / 40) + 1, que da mal:
+ * los recreos hacen que el módulo N no empiece a los N*40 minutos de las 8, y
+ * la cuenta se adelantaba (a las 15:20, en pleno módulo 10, devolvía 12).
+ */
 export function obtenerModuloActual(fecha: Date = new Date()): number {
-  const hora = fecha.getHours()
-  const minutos = fecha.getMinutes()
-  const minutosDesde8 = (hora - 8) * 60 + minutos
-
-  // Si es antes de las 8:00 o después de las 18:00, no hay módulo activo
-  if (hora < 8 || hora >= 18) {
-    return 0
-  }
-
-  // Cada módulo dura 40 minutos
-  const moduloActual = Math.floor(minutosDesde8 / 40) + 1
-
-  // Asegurar que esté en el rango válido (1-15)
-  return Math.min(Math.max(moduloActual, 1), 15)
+  return moduloEnCurso(fecha) ?? 0
 }
 
 export function formatearHorario(modulos: number[]): string {
