@@ -16,6 +16,8 @@ import { formatearFechaLarga } from "@/lib/fechas"
 import { AppShell } from "@/components/app-shell"
 import { EstadoReservaBadge } from "@/components/estado-reserva-badge"
 import { CalendarDays, Clock } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { SelectorBuscable } from "@/components/selector-buscable"
 import { useAuth } from "@/lib/auth-context"
 import type { ReservaEscolar, Docente, EquipoEscolar } from "@/lib/types"
 import { toast } from "sonner"
@@ -44,6 +46,16 @@ function PageReservasDocentesContent() {
     d.setDate(d.getDate() + 7)
     return d
   })()
+
+  const esAdmin = user?.role === "ADMIN"
+
+  const cambiarDocente = async (id: string) => {
+    const docente = docentes.find((d) => d.id === id) ?? null
+    setCurrentDocente(docente)
+    setShowForm(false)
+    setMisReservas([])
+    await recargarReservas(docente)
+  }
 
   const recargarReservas = async (docente: Docente | null) => {
     if (!docente) return
@@ -78,7 +90,10 @@ function PageReservasDocentesContent() {
               ) || docentesData[0] || null
           }
         } else if (user.role === "ADMIN") {
-          detected = docentesData[0] || null
+          // El admin no es ningún docente: elige a cuál mirar. Antes se quedaba
+          // con docentesData[0] y mostraba el panel de un docente cualquiera
+          // como si fuera el suyo.
+          detected = null
         }
 
         setCurrentDocente(detected)
@@ -153,40 +168,72 @@ function PageReservasDocentesContent() {
     )
   }
 
+  // El admin elige de qué docente ver las reservas; el docente ve las suyas.
+  const selectorDocente = esAdmin ? (
+    <Card>
+      <CardContent className="pt-6">
+        <Label htmlFor="docente-panel">Ver reservas de</Label>
+        <div className="mt-1 max-w-md">
+          <SelectorBuscable
+            id="docente-panel"
+            valor={currentDocente?.id}
+            onChange={cambiarDocente}
+            placeholder="Elegí un docente"
+            placeholderBusqueda="Buscar por nombre o materia…"
+            vacio="Ningún docente coincide"
+            opciones={docentes.map((d) => ({
+              valor: d.id,
+              etiqueta: `${d.nombre} ${d.apellido}`,
+              detalle: d.materias?.length ? d.materias.join(", ") : undefined,
+            }))}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  ) : null
+
   if (!currentDocente) {
     return (
-      <AppShell titulo="Mis reservas">
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuración de Docente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>No se pudo encontrar un docente asociado a tu cuenta.</p>
-            <div className="bg-gray-50 p-4 rounded">
-              <p className="text-sm">
-                <strong>Usuario:</strong> {user?.username}
+      <AppShell
+        titulo={esAdmin ? "Reservas por docente" : "Mis reservas"}
+        descripcion={
+          esAdmin
+            ? "Elegí un docente para ver sus reservas o cargarle una nueva."
+            : undefined
+        }
+      >
+        {esAdmin ? (
+          <div className="space-y-6">
+            {selectorDocente}
+            <Card>
+              <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+                <CalendarDays className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+                <p className="font-medium">Ningún docente seleccionado</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Elegí uno arriba. Para ver todas las reservas juntas está el Panel.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Tu cuenta no tiene un docente asociado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Pedile al administrador que vincule tu usuario ({user?.username}) con tu ficha de docente.
               </p>
-              <p className="text-sm">
-                <strong>Rol:</strong> {user?.role}
-              </p>
-              <p className="text-sm">
-                <strong>Docentes disponibles:</strong> {docentes.length}
-              </p>
-            </div>
-            <p className="text-sm text-gray-600">
-              {user?.role === "ADMIN"
-                ? "Como administrador, deberías poder ver los docentes. Si no hay docentes, créalos primero."
-                : "Contactá al administrador para asociar tu cuenta con un perfil de docente."}
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </AppShell>
     )
   }
 
   return (
     <AppShell
-      titulo="Mis reservas"
+      titulo={esAdmin ? "Reservas por docente" : "Mis reservas"}
       descripcion={`${currentDocente.nombre} ${currentDocente.apellido}`}
       acciones={
         <Button onClick={() => setShowForm((s) => !s)}>
@@ -195,9 +242,11 @@ function PageReservasDocentesContent() {
       }
     >
       <div className="space-y-6">
+      {selectorDocente}
       {showForm && (
         <div>
           <FormularioReservaEscolar
+            key={currentDocente.id}
             onCrearReserva={(r) => handleCrearReserva(r)}
             onCancelar={() => setShowForm(false)}
             reservasExistentes={misReservas}
@@ -211,15 +260,22 @@ function PageReservasDocentesContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mis Reservas</CardTitle>
+          {/* El admin está mirando el panel de otra persona: no corresponde
+              hablarle de "mis" reservas. */}
+          <CardTitle>
+            {esAdmin ? `Reservas de ${currentDocente.nombre} ${currentDocente.apellido}` : "Mis reservas"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {misReservas.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <CalendarDays className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
-              <p className="font-medium">Todavía no tenés reservas</p>
+              <p className="font-medium">
+                {esAdmin ? "Este docente no tiene reservas" : "Todavía no tenés reservas"}
+              </p>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Se muestran las de los últimos y próximos 30 días. Creá una con “Nueva reserva”.
+                Se muestran las de los últimos y próximos 30 días.
+                {esAdmin ? " Podés cargarle una con “Nueva reserva”." : " Creá una con “Nueva reserva”."}
               </p>
               <Button className="mt-2" onClick={() => setShowForm(true)}>
                 Nueva reserva
