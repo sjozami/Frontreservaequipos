@@ -92,10 +92,13 @@ export interface EquipoEscolar {
 }
 
 export interface ModuloHorario {
-  numero: number // 1-15 (módulos del día)
+  numero: number // 1-14: 1 a 7 turno mañana, 8 a 14 turno tarde
   horaInicio: string // "08:00", "08:40", etc.
   horaFin: string // "08:40", "09:20", etc.
   nombre: string // "1° Módulo", "2° Módulo", etc.
+  turno: "mañana" | "tarde"
+  /** Número que usa la escuela dentro del turno (1 a 7 en ambos). */
+  numeroEnTurno: number
 }
 
 export interface Docente {
